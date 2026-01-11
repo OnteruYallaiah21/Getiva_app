@@ -54,6 +54,7 @@ BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 USERS_CSV = DATA_DIR / "users.csv"
 LEADS_CSV = DATA_DIR / "leads.csv"
+RECRUITERS_CSV = DATA_DIR / "recruiters.csv"
 UPLOADS_DIR = BASE_DIR.parent / "uploads"  # Local storage directory
 
 # Create directories if they don't exist
@@ -199,6 +200,42 @@ def write_leads(leads: list):
             writer = csv.DictWriter(f, fieldnames=['id', 'name', 'phone', 'email', 'status', 'comment', 'created_at', 'last_updated'])
             writer.writeheader()
             writer.writerows(leads)
+
+# Recruiters Management Functions
+def init_recruiters_csv():
+    """Initialize recruiters.csv if it doesn't exist"""
+    if not RECRUITERS_CSV.exists():
+        with open(RECRUITERS_CSV, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['id', 'name', 'phone', 'deals_with', 'created_at', 'last_updated'])
+
+def read_recruiters() -> list:
+    """Read all recruiters from recruiters.csv"""
+    init_recruiters_csv()
+    recruiters = []
+    if RECRUITERS_CSV.exists():
+        with open(RECRUITERS_CSV, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            for recruiter in reader:
+                # Ensure both fields exist
+                if 'created_at' not in recruiter or not recruiter.get('created_at'):
+                    recruiter['created_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                if 'last_updated' not in recruiter or not recruiter.get('last_updated'):
+                    recruiter['last_updated'] = recruiter.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                # Ensure deals_with exists
+                if 'deals_with' not in recruiter:
+                    recruiter['deals_with'] = ''
+                recruiters.append(recruiter)
+    return recruiters
+
+def write_recruiters(recruiters: list):
+    """Write recruiters to recruiters.csv"""
+    init_recruiters_csv()
+    with open(RECRUITERS_CSV, 'w', newline='') as f:
+        if recruiters:
+            writer = csv.DictWriter(f, fieldnames=['id', 'name', 'phone', 'deals_with', 'created_at', 'last_updated'])
+            writer.writeheader()
+            writer.writerows(recruiters)
 
 def read_applications(username: str) -> list:
     """Read applications for a user"""
@@ -612,6 +649,18 @@ async def delete_application(row_id: int, username: str = Form(...)):
     return {"success": True}
 
 # Admin routes
+# IMPORTANT: /admin/users/list must come BEFORE /admin/users/{username} to avoid route conflicts
+@app.get("/admin/users/list")
+async def get_users_list():
+    """Get list of all usernames for dropdown (admin only)"""
+    try:
+        users = read_users()
+        usernames = [{"username": user['username'], "role": user['role']} for user in users]
+        return {"users": usernames}
+    except Exception as e:
+        print(f"Error in get_users_list: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
+
 @app.get("/admin/users")
 async def get_users():
     """Get all users (admin only)"""
@@ -807,6 +856,93 @@ async def delete_lead(lead_id: str):
     # Remove lead
     leads = [lead for lead in leads if lead['id'] != lead_id]
     write_leads(leads)
+    
+    return {"success": True}
+
+# Recruiters Management Routes (Admin Only)
+@app.get("/admin/recruiters")
+async def get_recruiters():
+    """Get all recruiters (admin only)"""
+    recruiters = read_recruiters()
+    return {"recruiters": recruiters}
+
+@app.post("/admin/recruiters")
+async def create_recruiter(
+    name: str = Form(...),
+    phone: str = Form(...),
+    deals_with: Optional[str] = Form(None)
+):
+    """Create new recruiter (admin only)"""
+    recruiters = read_recruiters()
+    
+    # Generate new ID
+    if recruiters:
+        max_id = max(int(recruiter.get('id', 0)) for recruiter in recruiters)
+        new_id = max_id + 1
+    else:
+        new_id = 1
+    
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    new_recruiter = {
+        'id': str(new_id),
+        'name': name,
+        'phone': phone,
+        'deals_with': deals_with or '',
+        'created_at': current_time,
+        'last_updated': current_time
+    }
+    recruiters.append(new_recruiter)
+    write_recruiters(recruiters)
+    
+    return {"success": True, "recruiter": new_recruiter}
+
+@app.put("/admin/recruiters/{recruiter_id}")
+async def update_recruiter(
+    recruiter_id: str,
+    name: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    deals_with: Optional[str] = Form(None)
+):
+    """Update recruiter (admin only)"""
+    recruiters = read_recruiters()
+    
+    # Find recruiter
+    recruiter_index = None
+    for i, recruiter in enumerate(recruiters):
+        if recruiter['id'] == recruiter_id:
+            recruiter_index = i
+            break
+    
+    if recruiter_index is None:
+        raise HTTPException(status_code=404, detail="Recruiter not found")
+    
+    # Update fields
+    if name:
+        recruiters[recruiter_index]['name'] = name
+    if phone:
+        recruiters[recruiter_index]['phone'] = phone
+    if deals_with is not None:
+        recruiters[recruiter_index]['deals_with'] = deals_with
+    
+    # Update last_updated timestamp
+    recruiters[recruiter_index]['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Ensure created_at exists
+    if 'created_at' not in recruiters[recruiter_index] or not recruiters[recruiter_index]['created_at']:
+        recruiters[recruiter_index]['created_at'] = recruiters[recruiter_index].get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    
+    write_recruiters(recruiters)
+    
+    return {"success": True, "recruiter": recruiters[recruiter_index]}
+
+@app.delete("/admin/recruiters/{recruiter_id}")
+async def delete_recruiter(recruiter_id: str):
+    """Delete recruiter (admin only)"""
+    recruiters = read_recruiters()
+    
+    # Remove recruiter
+    recruiters = [recruiter for recruiter in recruiters if recruiter['id'] != recruiter_id]
+    write_recruiters(recruiters)
     
     return {"success": True}
 

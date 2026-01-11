@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetIVA - Recruiters Management</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="getiva.jpeg" alt="GetIVA Logo" class="logo">
+            <div>
+                <h1>GETIVA</h1>
+                <p class="subtitle">Recruiters Management</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Navigation Links -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <a href="admin.html" style="padding: 8px 16px; background: #6b7280; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Admin Portal</a>
+            <a href="leads.html" style="padding: 8px 16px; background: #ff6600; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Leads Management</a>
+            <a href="recruiters.html" style="padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Recruiters Management</a>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #ff6600;">Recruiters Management</h2>
+            <div>
+                <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
+                <button onclick="logout()" class="secondary">Logout</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Add New Recruiter Form -->
+        <div class="form-container">
+            <h3 style="color: #ff6600; margin-bottom: 20px;">Add New Recruiter</h3>
+            <form id="addRecruiterForm">
+                <div class="form-group">
+                    <label for="newRecruiterName">Recruiter Name *</label>
+                    <input type="text" id="newRecruiterName" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newRecruiterPhone">Phone Number *</label>
+                    <input type="tel" id="newRecruiterPhone" name="phone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newDealsWith">Deals With</label>
+                    <select id="newDealsWith" name="deals_with" multiple size="5" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 1em; background: white;">
+                        <option value="" disabled style="font-weight: bold; color: #666; background: #f9fafb;">-- Select Users (Hold Ctrl/Cmd to select multiple) --</option>
+                    </select>
+                    <div id="selectedUsersDisplay" style="margin-top: 10px; min-height: 50px; padding: 10px; background: #f9fafb; border-radius: 5px; border: 1px solid #e5e7eb;">
+                        <small style="color: #666;">Selected users will appear here</small>
+                    </div>
+                </div>
+                
+                <button type="submit">Add Recruiter</button>
+            </form>
+        </div>
+
+        <!-- Recruiters Table -->
+        <div id="recruitersContainer">
+            <table id="recruitersTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                        <th>Deals With</th>
+                        <th>Created At</th>
+                        <th>Last Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="recruitersBody">
+                    <tr>
+                        <td colspan="7" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Recruiter Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Recruiter</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="editRecruiterForm">
+                <input type="hidden" id="editRecruiterId">
+                <div class="form-group">
+                    <label for="editRecruiterName">Recruiter Name</label>
+                    <input type="text" id="editRecruiterName" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editRecruiterPhone">Phone Number</label>
+                    <input type="tel" id="editRecruiterPhone" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editDealsWith">Deals With</label>
+                    <select id="editDealsWith" multiple size="5" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 1em; background: white;">
+                        <option value="" disabled style="font-weight: bold; color: #666; background: #f9fafb;">-- Select Users (Hold Ctrl/Cmd to select multiple) --</option>
+                    </select>
+                    <div id="editSelectedUsersDisplay" style="margin-top: 10px; min-height: 50px; padding: 10px; background: #f9fafb; border-radius: 5px; border: 1px solid #e5e7eb;">
+                        <small style="color: #666;">Selected users will appear here</small>
+                    </div>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit">Update</button>
+                    <button type="button" class="secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API_BASE is set by config.js
+        let currentUsername = sessionStorage.getItem('username');
+        let currentRole = sessionStorage.getItem('role');
+        let allUsers = [];
+
+        // Check if user is logged in and is admin
+        if (!currentUsername || currentRole !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('username-display').textContent = currentUsername;
+
+        // Load users for dropdown
+        async function loadUsers() {
+            try {
+                const url = `${API_BASE}/admin/users/list`;
+                console.log('Loading users from:', url);
+                const response = await fetch(url);
+                console.log('Load users response:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Users data:', data);
+                
+                if (data.users && Array.isArray(data.users)) {
+                    allUsers = data.users;
+                    populateUserDropdowns();
+                } else {
+                    console.error('Invalid users data format:', data);
+                    showMessage('Error loading users: Invalid data format', 'error');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showMessage(`Error loading users: ${error.message}`, 'error');
+            }
+        }
+
+        function populateUserDropdowns() {
+            const newSelect = document.getElementById('newDealsWith');
+            const editSelect = document.getElementById('editDealsWith');
+            
+            // Clear existing options (except first one)
+            newSelect.innerHTML = '<option value="" disabled style="font-weight: bold; color: #666;">-- Select Users (Hold Ctrl/Cmd to select multiple) --</option>';
+            editSelect.innerHTML = '<option value="" disabled style="font-weight: bold; color: #666;">-- Select Users (Hold Ctrl/Cmd to select multiple) --</option>';
+            
+            // Add user options with better formatting
+            allUsers.forEach(user => {
+                const option1 = document.createElement('option');
+                option1.value = user.username;
+                option1.textContent = `${user.username} (${user.role})`;
+                option1.style.padding = '5px';
+                newSelect.appendChild(option1);
+                
+                const option2 = document.createElement('option');
+                option2.value = user.username;
+                option2.textContent = `${user.username} (${user.role})`;
+                option2.style.padding = '5px';
+                editSelect.appendChild(option2);
+            });
+            
+            // Add event listeners to show selected users
+            newSelect.addEventListener('change', updateSelectedUsersDisplay);
+            editSelect.addEventListener('change', updateEditSelectedUsersDisplay);
+        }
+        
+        function updateSelectedUsersDisplay() {
+            const select = document.getElementById('newDealsWith');
+            const display = document.getElementById('selectedUsersDisplay');
+            const selected = Array.from(select.selectedOptions).filter(opt => opt.value !== '');
+            
+            if (selected.length === 0) {
+                display.innerHTML = '<small style="color: #666;">Selected users will appear here</small>';
+                return;
+            }
+            
+            display.innerHTML = selected.map(option => {
+                const user = allUsers.find(u => u.username === option.value);
+                const roleColor = user && user.role === 'admin' ? '#ef4444' : '#10b981';
+                return `<span style="background: ${roleColor}; color: white; padding: 6px 12px; border-radius: 20px; margin: 4px; display: inline-block; font-size: 0.85em; font-weight: 500;">
+                    ${escapeHtml(option.textContent)} 
+                    <span style="cursor: pointer; margin-left: 6px; font-weight: bold;" onclick="removeUserFromSelect('${escapeHtml(option.value)}', 'new')">×</span>
+                </span>`;
+            }).join('');
+        }
+        
+        function updateEditSelectedUsersDisplay() {
+            const select = document.getElementById('editDealsWith');
+            const display = document.getElementById('editSelectedUsersDisplay');
+            const selected = Array.from(select.selectedOptions).filter(opt => opt.value !== '');
+            
+            if (selected.length === 0) {
+                display.innerHTML = '<small style="color: #666;">Selected users will appear here</small>';
+                return;
+            }
+            
+            display.innerHTML = selected.map(option => {
+                const user = allUsers.find(u => u.username === option.value);
+                const roleColor = user && user.role === 'admin' ? '#ef4444' : '#10b981';
+                return `<span style="background: ${roleColor}; color: white; padding: 6px 12px; border-radius: 20px; margin: 4px; display: inline-block; font-size: 0.85em; font-weight: 500;">
+                    ${escapeHtml(option.textContent)} 
+                    <span style="cursor: pointer; margin-left: 6px; font-weight: bold;" onclick="removeUserFromSelect('${escapeHtml(option.value)}', 'edit')">×</span>
+                </span>`;
+            }).join('');
+        }
+        
+        function removeUserFromSelect(username, type) {
+            const selectId = type === 'new' ? 'newDealsWith' : 'editDealsWith';
+            const select = document.getElementById(selectId);
+            const option = Array.from(select.options).find(opt => opt.value === username);
+            if (option) {
+                option.selected = false;
+                if (type === 'new') {
+                    updateSelectedUsersDisplay();
+                } else {
+                    updateEditSelectedUsersDisplay();
+                }
+            }
+        }
+
+        // Load recruiters on page load
+        loadRecruiters();
+        loadUsers();
+
+        // Add recruiter form handler
+        document.getElementById('addRecruiterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('newRecruiterName').value.trim();
+            const phone = document.getElementById('newRecruiterPhone').value.trim();
+            const dealsWithSelect = document.getElementById('newDealsWith');
+            const selectedUsers = Array.from(dealsWithSelect.selectedOptions)
+                .map(option => option.value)
+                .filter(value => value !== '');
+            const dealsWith = selectedUsers.join(', ');
+            
+            // Validate required fields
+            if (!name || !phone) {
+                showMessage('Name and Phone are required fields', 'error');
+                return;
+            }
+            
+            const formData = new FormData();
+            formData.append('name', name);
+            formData.append('phone', phone);
+            formData.append('deals_with', dealsWith);
+            
+            try {
+                const url = `${API_BASE}/admin/recruiters`;
+                console.log('Adding recruiter:', url);
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                console.log('Response status:', response.status, response.statusText);
+                
+                const contentType = response.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    showMessage(`Server error: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                if (response.ok) {
+                    showMessage('Recruiter added successfully!', 'success');
+                    document.getElementById('addRecruiterForm').reset();
+                    loadRecruiters();
+                } else {
+                    const errorMsg = data.detail || data.message || `Error adding recruiter (${response.status})`;
+                    showMessage(errorMsg, 'error');
+                    console.error('Error response:', data);
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                showMessage(`Error connecting to server: ${error.message}`, 'error');
+            }
+        });
+
+        // Edit recruiter form handler
+        document.getElementById('editRecruiterForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const recruiterId = document.getElementById('editRecruiterId').value;
+            formData.append('name', document.getElementById('editRecruiterName').value.trim());
+            formData.append('phone', document.getElementById('editRecruiterPhone').value.trim());
+            
+            const dealsWithSelect = document.getElementById('editDealsWith');
+            const selectedUsers = Array.from(dealsWithSelect.selectedOptions)
+                .map(option => option.value)
+                .filter(value => value !== '');
+            const dealsWith = selectedUsers.join(', ');
+            formData.append('deals_with', dealsWith);
+            
+            try {
+                const url = `${API_BASE}/admin/recruiters/${recruiterId}`;
+                console.log('Updating recruiter:', url);
+                
+                const response = await fetch(url, {
+                    method: 'PUT',
+                    body: formData
+                });
+                
+                console.log('Update response:', response.status, response.statusText);
+                
+                const contentType = response.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    showMessage(`Server error: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                if (response.ok) {
+                    showMessage('Recruiter updated successfully!', 'success');
+                    closeEditModal();
+                    loadRecruiters();
+                } else {
+                    const errorMsg = data.detail || data.message || `Error updating recruiter (${response.status})`;
+                    showMessage(errorMsg, 'error');
+                    console.error('Error response:', data);
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                showMessage(`Error connecting to server: ${error.message}`, 'error');
+            }
+        });
+
+        async function loadRecruiters() {
+            try {
+                const url = `${API_BASE}/admin/recruiters`;
+                console.log('Loading recruiters from:', url);
+                const response = await fetch(url);
+                console.log('Load recruiters response:', response.status, response.statusText);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                const tbody = document.getElementById('recruitersBody');
+                
+                if (data.recruiters && data.recruiters.length > 0) {
+                    tbody.innerHTML = data.recruiters.map(recruiter => {
+                        const dealsWithList = recruiter.deals_with ? recruiter.deals_with.split(', ').filter(u => u) : [];
+                        return `
+                        <tr>
+                            <td data-label="ID">${escapeHtml(recruiter.id)}</td>
+                            <td data-label="Name">${escapeHtml(recruiter.name)}</td>
+                            <td data-label="Phone"><a href="tel:${escapeHtml(recruiter.phone)}">${escapeHtml(recruiter.phone)}</a></td>
+                            <td data-label="Deals With">
+                                ${dealsWithList.length > 0 
+                                    ? (() => {
+                                        return dealsWithList.map(username => {
+                                            const user = allUsers.find(u => u.username === username);
+                                            const roleColor = user && user.role === 'admin' ? '#ef4444' : '#10b981';
+                                            const roleLabel = user ? user.role : 'user';
+                                            return `<span style="background: ${roleColor}; color: white; padding: 6px 12px; border-radius: 20px; margin: 3px; display: inline-block; font-size: 0.85em; font-weight: 500; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                                ${escapeHtml(username)} <small style="opacity: 0.9;">(${roleLabel})</small>
+                                            </span>`;
+                                        }).join('');
+                                    })()
+                                    : '<span style="color: #999; font-style: italic;">No users assigned</span>'}
+                            </td>
+                            <td data-label="Created At">${escapeHtml(recruiter.created_at || 'N/A')}</td>
+                            <td data-label="Last Updated">${escapeHtml(recruiter.last_updated || 'N/A')}</td>
+                            <td data-label="Actions">
+                                <div class="action-buttons">
+                                    <button onclick="editRecruiter('${escapeHtml(recruiter.id)}', '${escapeHtml(recruiter.name)}', '${escapeHtml(recruiter.phone)}', '${escapeHtml((recruiter.deals_with || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'))}')" class="small">Edit</button>
+                                    <button onclick="deleteRecruiter('${escapeHtml(recruiter.id)}', '${escapeHtml(recruiter.name)}')" class="small danger">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                    }).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No recruiters found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading recruiters:', error);
+                const errorMsg = error.message || 'Error loading recruiters';
+                document.getElementById('recruitersBody').innerHTML = `<tr><td colspan="7" class="text-center" style="color: red;">${errorMsg}</td></tr>`;
+            }
+        }
+
+        function editRecruiter(id, name, phone, dealsWith) {
+            document.getElementById('editRecruiterId').value = id;
+            document.getElementById('editRecruiterName').value = name;
+            document.getElementById('editRecruiterPhone').value = phone;
+            
+            // Set selected users in dropdown
+            const editSelect = document.getElementById('editDealsWith');
+            const dealsWithList = dealsWith ? dealsWith.split(', ').filter(u => u) : [];
+            
+            // Clear previous selections
+            Array.from(editSelect.options).forEach(option => {
+                option.selected = false;
+            });
+            
+            // Select users
+            dealsWithList.forEach(username => {
+                const option = Array.from(editSelect.options).find(opt => opt.value === username);
+                if (option) {
+                    option.selected = true;
+                }
+            });
+            
+            // Update the display
+            updateEditSelectedUsersDisplay();
+            
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.getElementById('editRecruiterForm').reset();
+        }
+
+        async function deleteRecruiter(id, name) {
+            if (!confirm(`Are you sure you want to delete recruiter "${name}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/recruiters/${id}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Recruiter deleted successfully!', 'success');
+                    loadRecruiters();
+                } else {
+                    showMessage(data.detail || 'Error deleting recruiter', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+            }
+        }
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = message;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+            
+            setTimeout(() => {
+                messageDiv.style.display = 'none';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const editModal = document.getElementById('editModal');
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

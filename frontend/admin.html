@@ -19,10 +19,16 @@
     </header>
 
     <div class="container">
+        <!-- Navigation Links -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <a href="admin.html" style="padding: 8px 16px; background: #6b7280; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Admin Portal</a>
+            <a href="leads.html" style="padding: 8px 16px; background: #ff6600; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Leads Management</a>
+            <a href="recruiters.html" style="padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Recruiters Management</a>
+        </div>
+
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h2 style="color: #ff6600;">User Management</h2>
             <div>
-                <a href="leads.html" style="margin-right: 15px; padding: 8px 16px; background: #ff6600; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">Leads Management</a>
                 <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
                 <button onclick="logout()" class="secondary">Logout</button>
             </div>
