@@ -23,8 +23,9 @@ backend/service-account.json
 *client_secret*.json
 *client-secret*.json
 
-# CSV data files (optional - uncomment if you don't want to track CSV files in git)
-# backend/data/*.csv
+# CSV data files - do not commit actual data to preserve existing data
+backend/data/*.csv
+!backend/data/.gitkeep
 
 # Uploaded files
 uploads/*
