@@ -24,7 +24,8 @@ backend/service-account.json
 *client-secret*.json
 
 # CSV data files - do not commit actual data to preserve existing data
-backend/data/*.csv
+# CSV data files are now tracked in git
+# backend/data/*.csv
 !backend/data/.gitkeep
 
 # Uploaded files
