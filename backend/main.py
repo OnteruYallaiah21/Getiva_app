@@ -657,17 +657,25 @@ def read_recruiters() -> list:
     init_recruiters_csv()
     recruiters = []
     if RECRUITERS_CSV.exists():
-        with open(RECRUITERS_CSV, 'r', newline='', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                recruiters.append({
-                    'id': row.get('id', ''),
-                    'name': row.get('name', ''),
-                    'phone': row.get('phone', ''),
-                    'deals_with': row.get('deals_with', ''),
-                    'created_at': row.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
-                    'last_updated': row.get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
-                })
+        try:
+            with open(RECRUITERS_CSV, 'r', newline='', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    # Skip empty rows or header rows
+                    if not row.get('id') or row.get('id') == 'id':
+                        continue
+                    recruiters.append({
+                        'id': row.get('id', '').strip(),
+                        'name': row.get('name', '').strip(),
+                        'phone': row.get('phone', '').strip(),
+                        'deals_with': row.get('deals_with', '').strip(),
+                        'created_at': row.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')).strip(),
+                        'last_updated': row.get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S')).strip()
+                    })
+        except Exception as e:
+            print(f"Error reading recruiters CSV: {e}")
+            # Return empty list if CSV read fails
+            return []
     return recruiters
 
 def write_recruiters(recruiters: list):
@@ -1431,28 +1439,46 @@ async def create_recruiter(
     deals_with: Optional[str] = Form(None)
 ):
     """Create new recruiter (admin only)"""
-    recruiters = read_recruiters()
-    
-    # Generate new ID
-    if recruiters:
-        max_id = max(int(recruiter.get('id', 0)) for recruiter in recruiters)
-        new_id = max_id + 1
-    else:
-        new_id = 1
-    
-    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    new_recruiter = {
-        'id': str(new_id),
-        'name': name,
-        'phone': phone,
-        'deals_with': deals_with or '',
-        'created_at': current_time,
-        'last_updated': current_time
-    }
-    recruiters.append(new_recruiter)
-    write_recruiters(recruiters)
-    
-    return {"success": True, "recruiter": new_recruiter}
+    try:
+        recruiters = read_recruiters()
+        
+        # Generate new ID - handle invalid IDs gracefully
+        if recruiters:
+            valid_ids = []
+            for recruiter in recruiters:
+                recruiter_id = recruiter.get('id', '0')
+                try:
+                    valid_ids.append(int(recruiter_id))
+                except (ValueError, TypeError):
+                    # Skip invalid IDs
+                    continue
+            
+            if valid_ids:
+                max_id = max(valid_ids)
+                new_id = max_id + 1
+            else:
+                new_id = 1
+        else:
+            new_id = 1
+        
+        current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        new_recruiter = {
+            'id': str(new_id),
+            'name': name.strip(),
+            'phone': phone.strip(),
+            'deals_with': (deals_with or '').strip(),
+            'created_at': current_time,
+            'last_updated': current_time
+        }
+        recruiters.append(new_recruiter)
+        write_recruiters(recruiters)
+        
+        return {"success": True, "recruiter": new_recruiter}
+    except Exception as e:
+        print(f"Error creating recruiter: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error creating recruiter: {str(e)}")
 
 @app.put("/admin/recruiters/{recruiter_id}")
 async def update_recruiter(
@@ -1564,6 +1590,7 @@ async def download_applications_csv(username: str):
 async def get_download_list():
     """Get list of all available CSV files for download"""
     files = []
+    seen_usernames = set()  # Track usernames to avoid duplicates
     
     if USERS_CSV.exists():
         files.append({"name": "users.csv", "url": "/admin/download/users.csv", "description": "All users data"})
@@ -1574,14 +1601,17 @@ async def get_download_list():
     if RECRUITERS_CSV.exists():
         files.append({"name": "recruiters.csv", "url": "/admin/download/recruiters.csv", "description": "All recruiters data"})
     
-    # Get all user application files
-    for csv_file in DATA_DIR.glob("applications_*.csv"):
+    # Get all user application files - remove duplicates by username
+    for csv_file in sorted(DATA_DIR.glob("applications_*.csv")):
         username = csv_file.stem.replace("applications_", "")
-        files.append({
-            "name": csv_file.name,
-            "url": f"/admin/download/applications/{username}.csv",
-            "description": f"Applications for user: {username}"
-        })
+        # Only add if we haven't seen this username before
+        if username and username not in seen_usernames:
+            seen_usernames.add(username)
+            files.append({
+                "name": csv_file.name,
+                "url": f"/admin/download/applications/{username}.csv",
+                "description": f"Applications for user: {username}"
+            })
     
     return {"files": files}
 
