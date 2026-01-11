@@ -124,15 +124,34 @@ def get_supabase_client() -> Client | None:
         return None
 
 # Database connection for PostgreSQL
+# Global flag to track if database is available
+DB_AVAILABLE = None
+
 def get_db_connection():
-    """Get PostgreSQL database connection"""
-    if not DATABASE_URL:
+    """Get PostgreSQL database connection with fallback to CSV"""
+    global DB_AVAILABLE
+    
+    # Check if we've already determined DB is not available
+    if DB_AVAILABLE is False:
         return None
+    
+    if not DATABASE_URL:
+        DB_AVAILABLE = False
+        return None
+    
     try:
         import psycopg2
-        return psycopg2.connect(DATABASE_URL)
+        conn = psycopg2.connect(DATABASE_URL)
+        DB_AVAILABLE = True
+        return conn
+    except ImportError:
+        print("⚠️  psycopg2 not available, using CSV storage")
+        DB_AVAILABLE = False
+        return None
     except Exception as e:
-        print(f"Error connecting to database: {e}")
+        print(f"⚠️  Database connection failed: {e}")
+        print("📁 Falling back to CSV storage")
+        DB_AVAILABLE = False
         return None
 
 # Initialize database tables
@@ -415,49 +434,70 @@ def init_user_csv(username: str):
             # Optimized header structure for high-volume data
             writer.writerow(['id', 'company', 'jobdescription', 'filename', 'timestamp', 'download_link', 'view_link', 'status'])
 
+def init_users_csv():
+    """Initialize users.csv if it doesn't exist"""
+    if not USERS_CSV.exists():
+        with open(USERS_CSV, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['username', 'password', 'role'])
+
 def read_users():
-    """Read all users from Supabase database ONLY"""
+    """Read all users from Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT username, password, role FROM users ORDER BY username")
+            rows = cur.fetchall()
+            users = [{'username': row[0], 'password': row[1], 'role': row[2]} for row in rows]
+            cur.close()
+            conn.close()
+            return users
+        except Exception as e:
+            print(f"Error reading users from database: {e}, falling back to CSV")
+            try:
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT username, password, role FROM users ORDER BY username")
-        rows = cur.fetchall()
-        users = [{'username': row[0], 'password': row[1], 'role': row[2]} for row in rows]
-        cur.close()
-        return users
-    except Exception as e:
-        print(f"Error reading users from database: {e}")
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    init_users_csv()
+    users = []
+    with open(USERS_CSV, 'r', newline='', encoding='utf-8') as f:
+        reader = csv.DictReader(f)
+        users = list(reader)
+    return users
 
 def write_users(users: list):
-    """Write users to Supabase database ONLY"""
+    """Write users to Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            # Delete all existing users
+            cur.execute("DELETE FROM users")
+            # Insert all users
+            for user in users:
+                cur.execute(
+                    "INSERT INTO users (username, password, role) VALUES (%s, %s, %s) ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role, updated_at = CURRENT_TIMESTAMP",
+                    (user['username'], user['password'], user['role'])
+                )
+            conn.commit()
+            cur.close()
+            conn.close()
+            # Also write CSV backup
+            write_users_csv(users)
+            return
+        except Exception as e:
+            print(f"Error writing users to database: {e}, falling back to CSV")
+            try:
+                conn.rollback()
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        # Delete all existing users
-        cur.execute("DELETE FROM users")
-        # Insert all users
-        for user in users:
-            cur.execute(
-                "INSERT INTO users (username, password, role) VALUES (%s, %s, %s) ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, role = EXCLUDED.role, updated_at = CURRENT_TIMESTAMP",
-                (user['username'], user['password'], user['role'])
-            )
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print(f"Error writing users to database: {e}")
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    write_users_csv(users)
 
 def write_users_csv(users: list):
     """Write users to CSV backup"""
@@ -475,73 +515,98 @@ def init_leads_csv():
             writer.writerow(['id', 'name', 'phone', 'email', 'status', 'comment', 'created_at', 'last_updated'])
 
 def read_leads() -> list:
-    """Read all leads from Supabase database ONLY"""
+    """Read all leads from Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, name, phone, email, status, comment, created_at, last_updated FROM leads ORDER BY id")
+            rows = cur.fetchall()
+            leads = []
+            for row in rows:
+                leads.append({
+                    'id': str(row[0]),
+                    'name': row[1] or '',
+                    'phone': row[2] or '',
+                    'email': row[3] or '',
+                    'status': row[4] or 'talk',
+                    'comment': row[5] or '',
+                    'created_at': row[6].strftime('%Y-%m-%d %H:%M:%S') if row[6] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'last_updated': row[7].strftime('%Y-%m-%d %H:%M:%S') if row[7] else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+            cur.close()
+            conn.close()
+            return leads
+        except Exception as e:
+            print(f"Error reading leads from database: {e}, falling back to CSV")
+            try:
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id, name, phone, email, status, comment, created_at, last_updated FROM leads ORDER BY id")
-        rows = cur.fetchall()
-        leads = []
-        for row in rows:
-            leads.append({
-                'id': str(row[0]),
-                'name': row[1] or '',
-                'phone': row[2] or '',
-                'email': row[3] or '',
-                'status': row[4] or 'talk',
-                'comment': row[5] or '',
-                'created_at': row[6].strftime('%Y-%m-%d %H:%M:%S') if row[6] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'last_updated': row[7].strftime('%Y-%m-%d %H:%M:%S') if row[7] else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            })
-        cur.close()
-        return leads
-    except Exception as e:
-        print(f"Error reading leads from database: {e}")
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    init_leads_csv()
+    leads = []
+    if LEADS_CSV.exists():
+        with open(LEADS_CSV, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                leads.append({
+                    'id': row.get('id', ''),
+                    'name': row.get('name', ''),
+                    'phone': row.get('phone', ''),
+                    'email': row.get('email', ''),
+                    'status': row.get('status', 'talk'),
+                    'comment': row.get('comment', ''),
+                    'created_at': row.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                    'last_updated': row.get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                })
+    return leads
 
 def write_leads(leads: list):
-    """Write leads to Supabase database ONLY"""
+    """Write leads to Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            # Get existing IDs
+            cur.execute("SELECT id FROM leads")
+            existing_ids = {row[0] for row in cur.fetchall()}
+            
+            for lead in leads:
+                lead_id = int(lead.get('id', 0))
+                if lead_id in existing_ids:
+                    # Update existing
+                    cur.execute("""
+                        UPDATE leads SET name = %s, phone = %s, email = %s, status = %s, comment = %s, last_updated = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (lead.get('name'), lead.get('phone'), lead.get('email'), lead.get('status'), lead.get('comment', ''), lead_id))
+                else:
+                    # Insert new
+                    cur.execute("""
+                        INSERT INTO leads (id, name, phone, email, status, comment, created_at, last_updated)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                    """, (
+                        lead_id, lead.get('name'), lead.get('phone'), lead.get('email'),
+                        lead.get('status'), lead.get('comment', ''),
+                        lead.get('created_at'), lead.get('last_updated')
+                    ))
+            conn.commit()
+            cur.close()
+            conn.close()
+            # Also write CSV backup
+            write_leads_csv(leads)
+            return
+        except Exception as e:
+            print(f"Error writing leads to database: {e}, falling back to CSV")
+            try:
+                conn.rollback()
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        # Get existing IDs
-        cur.execute("SELECT id FROM leads")
-        existing_ids = {row[0] for row in cur.fetchall()}
-        
-        for lead in leads:
-            lead_id = int(lead.get('id', 0))
-            if lead_id in existing_ids:
-                # Update existing
-                cur.execute("""
-                    UPDATE leads SET name = %s, phone = %s, email = %s, status = %s, comment = %s, last_updated = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                """, (lead.get('name'), lead.get('phone'), lead.get('email'), lead.get('status'), lead.get('comment', ''), lead_id))
-            else:
-                # Insert new
-                cur.execute("""
-                    INSERT INTO leads (id, name, phone, email, status, comment, created_at, last_updated)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-                """, (
-                    lead_id, lead.get('name'), lead.get('phone'), lead.get('email'),
-                    lead.get('status'), lead.get('comment', ''),
-                    lead.get('created_at'), lead.get('last_updated')
-                ))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print(f"Error writing leads to database: {e}")
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    write_leads_csv(leads)
 
 def write_leads_csv(leads: list):
     """Write leads to CSV backup"""
@@ -561,70 +626,93 @@ def init_recruiters_csv():
             writer.writerow(['id', 'name', 'phone', 'deals_with', 'created_at', 'last_updated'])
 
 def read_recruiters() -> list:
-    """Read all recruiters from Supabase database ONLY"""
+    """Read all recruiters from Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("SELECT id, name, phone, deals_with, created_at, last_updated FROM recruiters ORDER BY id")
+            rows = cur.fetchall()
+            recruiters = []
+            for row in rows:
+                recruiters.append({
+                    'id': str(row[0]),
+                    'name': row[1] or '',
+                    'phone': row[2] or '',
+                    'deals_with': row[3] or '',
+                    'created_at': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'last_updated': row[5].strftime('%Y-%m-%d %H:%M:%S') if row[5] else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                })
+            cur.close()
+            conn.close()
+            return recruiters
+        except Exception as e:
+            print(f"Error reading recruiters from database: {e}, falling back to CSV")
+            try:
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        cur.execute("SELECT id, name, phone, deals_with, created_at, last_updated FROM recruiters ORDER BY id")
-        rows = cur.fetchall()
-        recruiters = []
-        for row in rows:
-            recruiters.append({
-                'id': str(row[0]),
-                'name': row[1] or '',
-                'phone': row[2] or '',
-                'deals_with': row[3] or '',
-                'created_at': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'last_updated': row[5].strftime('%Y-%m-%d %H:%M:%S') if row[5] else datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-            })
-        cur.close()
-        return recruiters
-    except Exception as e:
-        print(f"Error reading recruiters from database: {e}")
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    init_recruiters_csv()
+    recruiters = []
+    if RECRUITERS_CSV.exists():
+        with open(RECRUITERS_CSV, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                recruiters.append({
+                    'id': row.get('id', ''),
+                    'name': row.get('name', ''),
+                    'phone': row.get('phone', ''),
+                    'deals_with': row.get('deals_with', ''),
+                    'created_at': row.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                    'last_updated': row.get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                })
+    return recruiters
 
 def write_recruiters(recruiters: list):
-    """Write recruiters to Supabase database ONLY"""
+    """Write recruiters to Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            # Get existing IDs
+            cur.execute("SELECT id FROM recruiters")
+            existing_ids = {row[0] for row in cur.fetchall()}
+            
+            for recruiter in recruiters:
+                recruiter_id = int(recruiter.get('id', 0))
+                if recruiter_id in existing_ids:
+                    # Update existing
+                    cur.execute("""
+                        UPDATE recruiters SET name = %s, phone = %s, deals_with = %s, last_updated = CURRENT_TIMESTAMP
+                        WHERE id = %s
+                    """, (recruiter.get('name'), recruiter.get('phone'), recruiter.get('deals_with', ''), recruiter_id))
+                else:
+                    # Insert new
+                    cur.execute("""
+                        INSERT INTO recruiters (id, name, phone, deals_with, created_at, last_updated)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                    """, (
+                        recruiter_id, recruiter.get('name'), recruiter.get('phone'),
+                        recruiter.get('deals_with', ''), recruiter.get('created_at'), recruiter.get('last_updated')
+                    ))
+            conn.commit()
+            cur.close()
+            conn.close()
+            # Also write CSV backup
+            write_recruiters_csv(recruiters)
+            return
+        except Exception as e:
+            print(f"Error writing recruiters to database: {e}, falling back to CSV")
+            try:
+                conn.rollback()
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        # Get existing IDs
-        cur.execute("SELECT id FROM recruiters")
-        existing_ids = {row[0] for row in cur.fetchall()}
-        
-        for recruiter in recruiters:
-            recruiter_id = int(recruiter.get('id', 0))
-            if recruiter_id in existing_ids:
-                # Update existing
-                cur.execute("""
-                    UPDATE recruiters SET name = %s, phone = %s, deals_with = %s, last_updated = CURRENT_TIMESTAMP
-                    WHERE id = %s
-                """, (recruiter.get('name'), recruiter.get('phone'), recruiter.get('deals_with', ''), recruiter_id))
-            else:
-                # Insert new
-                cur.execute("""
-                    INSERT INTO recruiters (id, name, phone, deals_with, created_at, last_updated)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                """, (
-                    recruiter_id, recruiter.get('name'), recruiter.get('phone'),
-                    recruiter.get('deals_with', ''), recruiter.get('created_at'), recruiter.get('last_updated')
-                ))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print(f"Error writing recruiters to database: {e}")
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    write_recruiters_csv(recruiters)
 
 def write_recruiters_csv(recruiters: list):
     """Write recruiters to CSV backup"""
@@ -636,67 +724,93 @@ def write_recruiters_csv(recruiters: list):
             writer.writerows(recruiters)
 
 def read_applications(username: str) -> list:
-    """Read applications for a user from Supabase database ONLY"""
+    """Read applications for a user from Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            cur.execute("""
+                SELECT id, company, jobdescription, filename, timestamp, download_link, view_link, status
+                FROM applications WHERE username = %s ORDER BY timestamp DESC
+            """, (username,))
+            rows = cur.fetchall()
+            applications = []
+            for row in rows:
+                applications.append({
+                    'id': str(row[0]),
+                    'company': row[1] or '',
+                    'jobdescription': row[2] or '',
+                    'filename': row[3] or '',
+                    'timestamp': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                    'download_link': row[5] or '',
+                    'view_link': row[6] or row[5] or '',
+                    'status': row[7] or 'applied'
+                })
+            cur.close()
+            conn.close()
+            return applications
+        except Exception as e:
+            print(f"Error reading applications from database: {e}, falling back to CSV")
+            try:
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        cur.execute("""
-            SELECT id, company, jobdescription, filename, timestamp, download_link, view_link, status
-            FROM applications WHERE username = %s ORDER BY timestamp DESC
-        """, (username,))
-        rows = cur.fetchall()
-        applications = []
-        for row in rows:
-            applications.append({
-                'id': str(row[0]),
-                'company': row[1] or '',
-                'jobdescription': row[2] or '',
-                'filename': row[3] or '',
-                'timestamp': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'download_link': row[5] or '',
-                'view_link': row[6] or row[5] or '',
-                'status': row[7] or 'applied'
-            })
-        cur.close()
-        return applications
-    except Exception as e:
-        print(f"Error reading applications from database: {e}")
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    csv_path = get_user_csv_path(username)
+    init_user_csv(username)
+    applications = []
+    if csv_path.exists():
+        with open(csv_path, 'r', newline='', encoding='utf-8') as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                applications.append({
+                    'id': row.get('id', ''),
+                    'company': row.get('company', ''),
+                    'jobdescription': row.get('jobdescription', ''),
+                    'filename': row.get('filename', ''),
+                    'timestamp': row.get('timestamp', datetime.now().strftime('%Y-%m-%d %H:%M:%S')),
+                    'download_link': row.get('download_link', ''),
+                    'view_link': row.get('view_link') or row.get('download_link', ''),
+                    'status': row.get('status', 'applied')
+                })
+    return applications
 
 def write_applications(username: str, applications: list):
-    """Write applications for a user to Supabase database ONLY"""
+    """Write applications for a user to Supabase database, fallback to CSV"""
     conn = get_db_connection()
-    if not conn:
-        raise Exception("Database connection not available. Please configure DATABASE_URL in .env")
+    if conn:
+        try:
+            cur = conn.cursor()
+            # Delete existing applications for this user
+            cur.execute("DELETE FROM applications WHERE username = %s", (username,))
+            # Insert all applications
+            for app in applications:
+                app_id = int(app.get('id', 0))
+                cur.execute("""
+                    INSERT INTO applications (id, username, company, jobdescription, filename, timestamp, download_link, view_link, status)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                """, (
+                    app_id, username, app.get('company'), app.get('jobdescription'),
+                    app.get('filename'), app.get('timestamp'), app.get('download_link'),
+                    app.get('view_link', app.get('download_link', '')), app.get('status', 'applied')
+                ))
+            conn.commit()
+            cur.close()
+            conn.close()
+            # Also write CSV backup
+            write_applications_csv(username, applications)
+            return
+        except Exception as e:
+            print(f"Error writing applications to database: {e}, falling back to CSV")
+            try:
+                conn.rollback()
+                conn.close()
+            except:
+                pass
     
-    try:
-        cur = conn.cursor()
-        # Delete existing applications for this user
-        cur.execute("DELETE FROM applications WHERE username = %s", (username,))
-        # Insert all applications
-        for app in applications:
-            app_id = int(app.get('id', 0))
-            cur.execute("""
-                INSERT INTO applications (id, username, company, jobdescription, filename, timestamp, download_link, view_link, status)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            """, (
-                app_id, username, app.get('company'), app.get('jobdescription'),
-                app.get('filename'), app.get('timestamp'), app.get('download_link'),
-                app.get('view_link', app.get('download_link', '')), app.get('status', 'applied')
-            ))
-        conn.commit()
-        cur.close()
-    except Exception as e:
-        print(f"Error writing applications to database: {e}")
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
+    # Fallback to CSV
+    write_applications_csv(username, applications)
 
 def write_applications_csv(username: str, applications: list):
     """Write applications to CSV backup"""
