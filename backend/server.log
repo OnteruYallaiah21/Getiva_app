@@ -1,0 +1,24 @@
+INFO:     Started server process [31228]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:50918 - "GET /user.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:50918 - "GET /applications?username=yallesh HTTP/1.1" 200 OK
+Attempting upload to Google Drive...
+Google Drive upload failed: Google Drive service not available, trying Supabase...
+Attempting upload to Supabase...
+Error initializing Supabase: Invalid API key
+Supabase upload failed: Supabase service not available, trying Cloudinary...
+Attempting upload to Cloudinary...
+INFO:     127.0.0.1:50919 - "POST /applications HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50919 - "GET /applications?username=yallesh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50938 - "GET / HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /user.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51072 - "GET /style.css HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51072 - "GET /applications?username=yallesh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /user.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51072 - "GET /applications?username=yallesh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /user.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51072 - "GET /applications?username=yallesh HTTP/1.1" 200 OK
+INFO:     127.0.0.1:51072 - "GET /user.html HTTP/1.1" 304 Not Modified
+INFO:     127.0.0.1:51072 - "GET /applications?username=yallesh HTTP/1.1" 200 OK

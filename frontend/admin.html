@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetIVA - Admin Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="getiva.jpeg" alt="GetIVA Logo" class="logo">
+            <div>
+                <h1>GETIVA</h1>
+                <p class="subtitle">Admin Portal</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #ff6600;">User Management</h2>
+            <div>
+                <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
+                <button onclick="logout()" class="secondary">Logout</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Add New User Form -->
+        <div class="form-container">
+            <h3 style="color: #ff6600; margin-bottom: 20px;">Add New User</h3>
+            <form id="addUserForm">
+                <div class="form-group">
+                    <label for="newUsername">Username *</label>
+                    <input type="text" id="newUsername" name="username" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newPassword">Password *</label>
+                    <input type="password" id="newPassword" name="password" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newRole">Role *</label>
+                    <select id="newRole" name="role" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <button type="submit">Add User</button>
+            </form>
+        </div>
+
+        <!-- Users Table -->
+        <div id="usersContainer">
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersBody">
+                    <tr>
+                        <td colspan="3" class="text-center">Loading...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit User</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="editUserForm">
+                <input type="hidden" id="editUsername">
+                <div class="form-group">
+                    <label for="editPassword">New Password (leave blank to keep current)</label>
+                    <input type="password" id="editPassword">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editRole">Role</label>
+                    <select id="editRole" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit">Update</button>
+                    <button type="button" class="secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- View User Applications Modal -->
+    <div id="viewApplicationsModal" class="modal">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3>Applications for: <span id="viewUsername"></span></h3>
+                <span class="close" onclick="closeViewModal()">&times;</span>
+            </div>
+            <div id="viewApplicationsContent">
+                <div class="spinner"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API_BASE is set by config.js
+        let currentUsername = sessionStorage.getItem('username');
+        let currentRole = sessionStorage.getItem('role');
+
+        // Check if user is logged in and is admin
+        if (!currentUsername || currentRole !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('username-display').textContent = currentUsername;
+
+        // Load users on page load
+        loadUsers();
+
+        // Add user form handler
+        document.getElementById('addUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('username', document.getElementById('newUsername').value);
+            formData.append('password', document.getElementById('newPassword').value);
+            formData.append('role', document.getElementById('newRole').value);
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('User added successfully!', 'success');
+                    document.getElementById('addUserForm').reset();
+                    loadUsers();
+                } else {
+                    showMessage(data.detail || 'Error adding user', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+            }
+        });
+
+        // Edit user form handler
+        document.getElementById('editUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const username = document.getElementById('editUsername').value;
+            const password = document.getElementById('editPassword').value;
+            const role = document.getElementById('editRole').value;
+            
+            if (password) {
+                formData.append('password', password);
+            }
+            formData.append('role', role);
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${username}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('User updated successfully!', 'success');
+                    closeEditModal();
+                    loadUsers();
+                } else {
+                    showMessage(data.detail || 'Error updating user', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+            }
+        });
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/users`);
+                const data = await response.json();
+                
+                const tbody = document.getElementById('usersBody');
+                
+                if (data.users && data.users.length > 0) {
+                    tbody.innerHTML = data.users.map(user => `
+                        <tr>
+                            <td data-label="Username">${escapeHtml(user.username)}</td>
+                            <td data-label="Role"><strong>${escapeHtml(user.role)}</strong></td>
+                            <td data-label="Actions">
+                                <div class="action-buttons">
+                                    <button onclick="viewApplications('${escapeHtml(user.username)}')" class="small">View Applications</button>
+                                    <button onclick="editUser('${escapeHtml(user.username)}', '${escapeHtml(user.role)}')" class="small">Edit</button>
+                                    <button onclick="deleteUser('${escapeHtml(user.username)}')" class="small danger">Delete</button>
+                                </div>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">No users found</td></tr>';
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                document.getElementById('usersBody').innerHTML = '<tr><td colspan="3" class="text-center" style="color: red;">Error loading users</td></tr>';
+            }
+        }
+
+        function editUser(username, role) {
+            document.getElementById('editUsername').value = username;
+            document.getElementById('editRole').value = role;
+            document.getElementById('editPassword').value = '';
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.getElementById('editUserForm').reset();
+        }
+
+        async function deleteUser(username) {
+            if (username === currentUsername) {
+                showMessage('You cannot delete your own account', 'error');
+                return;
+            }
+            
+            if (!confirm(`Are you sure you want to delete user "${username}"? This will also delete all their applications.`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/users/${username}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('User deleted successfully!', 'success');
+                    loadUsers();
+                } else {
+                    showMessage(data.detail || 'Error deleting user', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+            }
+        }
+
+        async function viewApplications(username) {
+            document.getElementById('viewUsername').textContent = username;
+            document.getElementById('viewApplicationsModal').classList.add('active');
+            document.getElementById('viewApplicationsContent').innerHTML = '<div class="spinner"></div>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/applications/${username}`);
+                const data = await response.json();
+                
+                if (data.applications && data.applications.length > 0) {
+                    const html = `
+                        <div style="margin-bottom: 20px;">
+                            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 15px; margin-bottom: 15px;">
+                                <input type="text" id="adminSearchCompany" placeholder="Search by company name..." onkeyup="filterAdminApplications()" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                                <select id="adminDateFilter" onchange="filterAdminApplications()" style="width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 5px;">
+                                    <option value="all">All Time</option>
+                                    <option value="today">Today</option>
+                                    <option value="yesterday">Yesterday</option>
+                                    <option value="last7days">Last 7 Days</option>
+                                    <option value="last30days">Last 30 Days</option>
+                                </select>
+                            </div>
+                            <div style="color: #666; font-size: 0.9em; margin-bottom: 10px;">
+                                <span id="adminResultCount">Showing ${data.applications.length} application(s)</span>
+                                <button onclick="clearAdminFilters()" class="secondary small" style="margin-left: 15px;">Clear Filters</button>
+                            </div>
+                        </div>
+                        <div id="adminApplicationsTable">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Company</th>
+                                        <th>Job Description</th>
+                                        <th>Filename</th>
+                                        <th>Timestamp</th>
+                                        <th>View/Download</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="adminApplicationsBody">
+                                    ${data.applications.map(app => `
+                                        <tr>
+                                            <td data-label="Company">${escapeHtml(app.company)}</td>
+                                            <td data-label="Job Description">${escapeHtml(app.jobdescription)}</td>
+                                            <td data-label="Filename">${escapeHtml(app.filename)}</td>
+                                            <td data-label="Timestamp">${escapeHtml(app.timestamp)}</td>
+                                            <td data-label="View/Download">
+                                            <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                                                ${app.view_link && app.view_link !== app.download_link ? `<a href="${escapeHtml(app.view_link)}" target="_blank" class="download-link">View</a>` : ''}
+                                                <a href="${escapeHtml(app.download_link)}" target="_blank" class="download-link">Download</a>
+                                            </div>
+                                        </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
+                    document.getElementById('viewApplicationsContent').innerHTML = html;
+                    window.adminAllApplications = data.applications; // Store for filtering
+                } else {
+                    document.getElementById('viewApplicationsContent').innerHTML = '<p class="text-center">No applications found for this user.</p>';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('viewApplicationsContent').innerHTML = '<p class="text-center" style="color: red;">Error loading applications</p>';
+            }
+        }
+
+        function filterAdminApplications() {
+            if (!window.adminAllApplications) return;
+            
+            const searchTerm = document.getElementById('adminSearchCompany')?.value.toLowerCase() || '';
+            const dateFilter = document.getElementById('adminDateFilter')?.value || 'all';
+            const tbody = document.getElementById('adminApplicationsBody');
+            
+            if (!tbody) return;
+            
+            let filtered = window.adminAllApplications.filter(app => {
+                const matchesSearch = !searchTerm || app.company.toLowerCase().includes(searchTerm);
+                
+                let matchesDate = true;
+                if (dateFilter !== 'all') {
+                    const appDate = new Date(app.timestamp);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const last7Days = new Date(today);
+                    last7Days.setDate(last7Days.getDate() - 7);
+                    const last30Days = new Date(today);
+                    last30Days.setDate(last30Days.getDate() - 30);
+                    
+                    switch (dateFilter) {
+                        case 'today':
+                            matchesDate = appDate >= today;
+                            break;
+                        case 'yesterday':
+                            matchesDate = appDate >= yesterday && appDate < today;
+                            break;
+                        case 'last7days':
+                            matchesDate = appDate >= last7Days;
+                            break;
+                        case 'last30days':
+                            matchesDate = appDate >= last30Days;
+                            break;
+                    }
+                }
+                
+                return matchesSearch && matchesDate;
+            });
+            
+            if (filtered.length > 0) {
+                tbody.innerHTML = filtered.map(app => `
+                    <tr>
+                        <td data-label="Company">${escapeHtml(app.company)}</td>
+                        <td data-label="Job Description">${escapeHtml(app.jobdescription)}</td>
+                        <td data-label="Filename">${escapeHtml(app.filename)}</td>
+                        <td data-label="Timestamp">${escapeHtml(app.timestamp)}</td>
+                        <td data-label="Download"><a href="${escapeHtml(app.download_link)}" target="_blank" class="download-link">Download</a></td>
+                    </tr>
+                `).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="5" class="text-center">No applications found matching your filters.</td></tr>';
+            }
+            
+            const resultCount = document.getElementById('adminResultCount');
+            if (resultCount) {
+                resultCount.textContent = `Showing ${filtered.length} of ${window.adminAllApplications.length} application(s)`;
+            }
+        }
+
+        function clearAdminFilters() {
+            if (document.getElementById('adminSearchCompany')) {
+                document.getElementById('adminSearchCompany').value = '';
+            }
+            if (document.getElementById('adminDateFilter')) {
+                document.getElementById('adminDateFilter').value = 'all';
+            }
+            filterAdminApplications();
+        }
+
+        function closeViewModal() {
+            document.getElementById('viewApplicationsModal').classList.remove('active');
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => {
+                messageDiv.className = '';
+                messageDiv.textContent = '';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close modals when clicking outside
+        window.onclick = function(event) {
+            const editModal = document.getElementById('editModal');
+            const viewModal = document.getElementById('viewApplicationsModal');
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+            if (event.target === viewModal) {
+                closeViewModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

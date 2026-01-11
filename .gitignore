@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# Environment variables
+.env
+.env.local
+.env.*
+!.env.example
+!.env.*.example
+
+# Google Drive credentials
+backend/service-account.json
+*client_secret*.json
+*client-secret*.json
+
+# CSV data files (optional - uncomment if you don't want to track CSV files in git)
+# backend/data/*.csv
+
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+

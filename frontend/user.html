@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetIVA - User Portal</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="getiva.jpeg" alt="GetIVA Logo" class="logo">
+            <div>
+                <h1>GETIVA</h1>
+                <p class="subtitle">Job Application Tracking System</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Dashboard Header -->
+        <div class="dashboard-header">
+            <div>
+                <h2 style="color: #ff6600; margin: 0;">Application Dashboard</h2>
+                <p style="color: #666; margin: 5px 0 0 0;">Track and manage your job applications</p>
+            </div>
+            <div class="header-actions">
+                <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
+                <button onclick="logout()" class="secondary">Logout</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value" id="statTotal">0</div>
+                <div class="stat-label">Total Applications</div>
+            </div>
+            <div class="stat-card stat-applied">
+                <div class="stat-value" id="statApplied">0</div>
+                <div class="stat-label">Applied</div>
+            </div>
+            <div class="stat-card stat-interview">
+                <div class="stat-value" id="statInterview">0</div>
+                <div class="stat-label">Interviews</div>
+            </div>
+            <div class="stat-card stat-offer">
+                <div class="stat-value" id="statOffer">0</div>
+                <div class="stat-label">Offers</div>
+            </div>
+            <div class="stat-card stat-rejected">
+                <div class="stat-value" id="statRejected">0</div>
+                <div class="stat-label">Rejected</div>
+            </div>
+        </div>
+
+        <!-- Action Bar -->
+        <div class="action-bar">
+            <button onclick="showAddModal()" class="btn-add">
+                <span>+</span> New Application
+            </button>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div class="search-filter-container">
+            <div class="search-filter-grid">
+                <div class="search-box">
+                    <label for="searchCompany">Search by Job Title or Company</label>
+                    <input type="text" id="searchCompany" placeholder="Enter job title or company name..." onkeyup="filterApplications()">
+                </div>
+                <div class="filter-box">
+                    <label for="statusFilter">Status</label>
+                    <select id="statusFilter" onchange="filterApplications()">
+                        <option value="all">All Status</option>
+                        <option value="Applied">Applied</option>
+                        <option value="Interview">Interview</option>
+                        <option value="Offer">Offer</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                <div class="filter-box">
+                    <label for="dateFilter">Date</label>
+                    <select id="dateFilter" onchange="filterApplications()">
+                        <option value="all">All Time</option>
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="last7days">Last 7 Days</option>
+                        <option value="last30days">Last 30 Days</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                </div>
+            </div>
+            <div id="customDateRange" style="display: none; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                <div>
+                    <label for="startDate">Start Date</label>
+                    <input type="date" id="startDate" onchange="filterApplications()">
+                </div>
+                <div>
+                    <label for="endDate">End Date</label>
+                    <input type="date" id="endDate" onchange="filterApplications()">
+                </div>
+            </div>
+            <div class="filter-actions">
+                <button type="button" onclick="clearFilters()" class="secondary small">Clear Filters</button>
+                <span id="resultCount" class="result-count"></span>
+            </div>
+        </div>
+
+        <!-- Add New Application Modal -->
+        <div id="addModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Add New Application</h3>
+                    <span class="close" onclick="closeAddModal()">&times;</span>
+                </div>
+                <form id="addApplicationForm">
+                    <div class="form-group">
+                        <label for="company">Company Name *</label>
+                        <input type="text" id="company" name="company" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="jobdescription">Job Description *</label>
+                        <textarea id="jobdescription" name="jobdescription" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="file">Upload File (PDF/DOC) *</label>
+                        <input type="file" id="file" name="file" accept=".pdf,.doc,.docx" required>
+                    </div>
+                    
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit">Add Application</button>
+                        <button type="button" class="secondary" onclick="closeAddModal()">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Applications Grid (Tiles) -->
+        <div id="applicationsContainer">
+            <div id="applicationsGrid" class="applications-grid">
+                <div class="loading-message">Loading...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 style="color: #ef4444;">Error</h3>
+                <span class="close" onclick="closeErrorModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p id="errorMessage" style="color: #721c24; font-size: 1.1em; line-height: 1.6;"></p>
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 20px;">
+                <button type="button" onclick="closeErrorModal()" style="width: 100%;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Edit Application</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="editApplicationForm">
+                <input type="hidden" id="editId">
+                <div class="form-group">
+                    <label for="editCompany">Company Name</label>
+                    <input type="text" id="editCompany" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editJobDescription">Job Description</label>
+                    <textarea id="editJobDescription" required></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editStatus">Status</label>
+                    <select id="editStatus" required>
+                        <option value="Applied">Applied</option>
+                        <option value="Interview">Interview</option>
+                        <option value="Offer">Offer</option>
+                        <option value="Rejected">Rejected</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editFile">Replace File (optional - PDF/DOC)</label>
+                    <input type="file" id="editFile" accept=".pdf,.doc,.docx">
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit">Update</button>
+                    <button type="button" class="secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API_BASE is set by config.js
+        let currentUsername = sessionStorage.getItem('username');
+        let allApplications = []; // Store all applications for filtering
+
+        // Check if user is logged in
+        if (!currentUsername) {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('username-display').textContent = currentUsername;
+
+        // Load applications on page load
+        loadApplications();
+
+        // Add application form handler
+        document.getElementById('addApplicationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('username', currentUsername);
+            formData.append('company', document.getElementById('company').value);
+            formData.append('jobdescription', document.getElementById('jobdescription').value);
+            formData.append('file', document.getElementById('file').files[0]);
+            
+            try {
+                const response = await fetch(`${API_BASE}/applications`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Application added successfully!', 'success');
+                    document.getElementById('addApplicationForm').reset();
+                    closeAddModal();
+                    loadApplications();
+                } else {
+                    // Show error in modal
+                    const errorMsg = data.detail || 'Error adding application';
+                    closeAddModal(); // Close add modal first
+                    showErrorModal(errorMsg);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                closeAddModal(); // Close add modal first
+                showErrorModal('Error connecting to server. Please check your connection and try again.');
+            }
+        });
+
+        // Edit application form handler
+        document.getElementById('editApplicationForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('username', currentUsername);
+            formData.append('company', document.getElementById('editCompany').value);
+            formData.append('jobdescription', document.getElementById('editJobDescription').value);
+            formData.append('status', document.getElementById('editStatus').value);
+            
+            const fileInput = document.getElementById('editFile');
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+            
+            const appId = document.getElementById('editId').value;
+            
+            try {
+                const response = await fetch(`${API_BASE}/applications/${appId}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Application updated successfully!', 'success');
+                    closeEditModal();
+                    loadApplications();
+                } else {
+                    showMessage(data.detail || 'Error updating application', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+            }
+        });
+
+        async function loadApplications() {
+            try {
+                const response = await fetch(`${API_BASE}/applications?username=${currentUsername}`);
+                const data = await response.json();
+                
+                // Store all applications
+                allApplications = data.applications || [];
+                
+                // Update statistics
+                updateStatistics();
+                
+                // Display applications (with filters applied)
+                filterApplications();
+            } catch (error) {
+                console.error('Error loading applications:', error);
+                document.getElementById('applicationsGrid').innerHTML = '<div class="error-message">Error loading applications</div>';
+            }
+        }
+
+        function updateStatistics() {
+            const total = allApplications.length;
+            
+            // Normalize status values for comparison (handle case variations)
+            const applied = allApplications.filter(app => {
+                const status = (app.status || '').trim();
+                return !status || status === 'Applied' || status === '';
+            }).length;
+            
+            const interview = allApplications.filter(app => {
+                const status = (app.status || '').trim();
+                return status === 'Interview';
+            }).length;
+            
+            const offer = allApplications.filter(app => {
+                const status = (app.status || '').trim();
+                return status === 'Offer';
+            }).length;
+            
+            const rejected = allApplications.filter(app => {
+                const status = (app.status || '').trim();
+                return status === 'Rejected';
+            }).length;
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statApplied').textContent = applied;
+            document.getElementById('statInterview').textContent = interview;
+            document.getElementById('statOffer').textContent = offer;
+            document.getElementById('statRejected').textContent = rejected;
+        }
+
+        function showAddModal() {
+            document.getElementById('addModal').classList.add('active');
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('active');
+            document.getElementById('addApplicationForm').reset();
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const addModal = document.getElementById('addModal');
+            const editModal = document.getElementById('editModal');
+            const errorModal = document.getElementById('errorModal');
+            if (event.target == addModal) {
+                closeAddModal();
+            }
+            if (event.target == editModal) {
+                closeEditModal();
+            }
+            if (event.target == errorModal) {
+                closeErrorModal();
+            }
+        }
+
+        function filterApplications() {
+            const searchTerm = document.getElementById('searchCompany').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const dateFilter = document.getElementById('dateFilter').value;
+            const startDate = document.getElementById('startDate').value;
+            const endDate = document.getElementById('endDate').value;
+            const tbody = document.getElementById('applicationsBody');
+            
+            // Show/hide custom date range
+            const customRangeDiv = document.getElementById('customDateRange');
+            if (dateFilter === 'custom') {
+                customRangeDiv.style.display = 'grid';
+            } else {
+                customRangeDiv.style.display = 'none';
+            }
+            
+            // Filter applications
+            let filtered = allApplications.filter(app => {
+                // Search filter (job title or company)
+                const companyMatch = app.company ? app.company.toLowerCase().includes(searchTerm) : false;
+                const jobMatch = app.jobdescription ? app.jobdescription.toLowerCase().includes(searchTerm) : false;
+                const matchesSearch = !searchTerm || companyMatch || jobMatch;
+                
+                // Status filter
+                const appStatus = app.status || 'Applied';
+                const matchesStatus = statusFilter === 'all' || appStatus === statusFilter;
+                
+                // Date filter
+                let matchesDate = true;
+                if (dateFilter !== 'all') {
+                    const appDate = new Date(app.timestamp);
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    const yesterday = new Date(today);
+                    yesterday.setDate(yesterday.getDate() - 1);
+                    const last7Days = new Date(today);
+                    last7Days.setDate(last7Days.getDate() - 7);
+                    const last30Days = new Date(today);
+                    last30Days.setDate(last30Days.getDate() - 30);
+                    
+                    switch (dateFilter) {
+                        case 'today':
+                            matchesDate = appDate >= today;
+                            break;
+                        case 'yesterday':
+                            matchesDate = appDate >= yesterday && appDate < today;
+                            break;
+                        case 'last7days':
+                            matchesDate = appDate >= last7Days;
+                            break;
+                        case 'last30days':
+                            matchesDate = appDate >= last30Days;
+                            break;
+                        case 'custom':
+                            if (startDate && endDate) {
+                                const start = new Date(startDate);
+                                const end = new Date(endDate);
+                                end.setHours(23, 59, 59, 999);
+                                matchesDate = appDate >= start && appDate <= end;
+                            }
+                            break;
+                    }
+                }
+                
+                return matchesSearch && matchesStatus && matchesDate;
+            });
+            
+            // Display filtered applications in square tile format
+            const gridContainer = document.getElementById('applicationsGrid');
+            if (filtered.length > 0) {
+                gridContainer.innerHTML = filtered.map(app => {
+                    const status = app.status || 'Applied';
+                    const statusClass = status.toLowerCase().replace(/\s+/g, '-');
+                    const statusColors = {
+                        'applied': '#10b981',
+                        'interview': '#4a90e2',
+                        'offer': '#f59e0b',
+                        'rejected': '#ef4444'
+                    };
+                    const statusColor = statusColors[statusClass] || '#6b7280';
+                    const date = new Date(app.timestamp);
+                    const formattedDate = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    
+                    return `
+                    <div class="application-tile">
+                        <div class="tile-header">
+                            <select class="tile-status-select" onchange="updateStatus(${app.id}, this.value)" style="background-color: ${statusColor};">
+                                <option value="Applied" ${status === 'Applied' ? 'selected' : ''}>Applied</option>
+                                <option value="Interview" ${status === 'Interview' ? 'selected' : ''}>Interview</option>
+                                <option value="Offer" ${status === 'Offer' ? 'selected' : ''}>Offer</option>
+                                <option value="Rejected" ${status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                            </select>
+                        </div>
+                        <div class="tile-body">
+                            <h3 class="tile-company">${escapeHtml(app.company)}</h3>
+                            <p class="tile-job">${escapeHtml(app.jobdescription)}</p>
+                            <div class="tile-date">📅 ${escapeHtml(formattedDate)}</div>
+                        </div>
+                        <div class="tile-footer">
+                            <div class="tile-actions">
+                                <a href="${escapeHtml(app.view_link || app.download_link)}" target="_blank" class="tile-btn view-btn" title="View File">👁️</a>
+                                <a href="${escapeHtml(app.download_link)}" target="_blank" class="tile-btn download-btn" title="Download">⬇️</a>
+                                <button onclick="editApplication(${app.id}, '${escapeHtml(app.company.replace(/'/g, "\\'"))}', '${escapeHtml(app.jobdescription.replace(/'/g, "\\'"))}', '${escapeHtml(status.replace(/'/g, "\\'"))}')" class="tile-btn edit-btn" title="Edit">✏️</button>
+                                <button onclick="deleteApplication(${app.id})" class="tile-btn delete-btn" title="Delete">🗑️</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+            } else {
+                gridContainer.innerHTML = '<div class="no-results">No applications found matching your filters.</div>';
+            }
+            
+            // Update result count
+            const resultCount = document.getElementById('resultCount');
+            if (allApplications.length > 0) {
+                resultCount.textContent = `Showing ${filtered.length} of ${allApplications.length} application(s)`;
+            } else {
+                resultCount.textContent = '';
+            }
+        }
+
+        function clearFilters() {
+            document.getElementById('searchCompany').value = '';
+            document.getElementById('statusFilter').value = 'all';
+            document.getElementById('dateFilter').value = 'all';
+            document.getElementById('startDate').value = '';
+            document.getElementById('endDate').value = '';
+            document.getElementById('customDateRange').style.display = 'none';
+            filterApplications();
+        }
+
+        async function updateStatus(id, newStatus) {
+            try {
+                const app = allApplications.find(a => a.id == id);
+                if (!app) return;
+
+                const formData = new FormData();
+                formData.append('username', currentUsername);
+                formData.append('company', app.company);
+                formData.append('jobdescription', app.jobdescription);
+                formData.append('status', newStatus);
+
+                const response = await fetch(`${API_BASE}/applications/${id}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    // Update local array immediately for instant feedback
+                    app.status = newStatus;
+                    // Update statistics immediately
+                    updateStatistics();
+                    // Reload from server to ensure sync
+                    loadApplications();
+                } else {
+                    showMessage('Error updating status', 'error');
+                    loadApplications(); // Reload to revert change
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+                loadApplications(); // Reload to revert change
+            }
+        }
+
+        function editApplication(id, company, jobDescription, status = 'Applied') {
+            document.getElementById('editId').value = id;
+            document.getElementById('editCompany').value = company;
+            document.getElementById('editJobDescription').value = jobDescription;
+            document.getElementById('editStatus').value = status || 'Applied';
+            document.getElementById('editFile').value = '';
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.getElementById('editApplicationForm').reset();
+        }
+
+        function showErrorModal(message) {
+            document.getElementById('errorMessage').textContent = message;
+            document.getElementById('errorModal').classList.add('active');
+        }
+
+        function closeErrorModal() {
+            document.getElementById('errorModal').classList.remove('active');
+            document.getElementById('errorMessage').textContent = '';
+        }
+
+        async function deleteApplication(id) {
+            if (!confirm('Are you sure you want to delete this application?')) {
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('username', currentUsername);
+                
+                const response = await fetch(`${API_BASE}/applications/${id}`, {
+                    method: 'DELETE',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('Application deleted successfully!', 'success');
+                    loadApplications();
+                } else {
+                    showMessage(data.detail || 'Error deleting application', 'error');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('Error connecting to server', 'error');
+            }
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.textContent = text;
+            setTimeout(() => {
+                messageDiv.className = '';
+                messageDiv.textContent = '';
+            }, 5000);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+    </script>
+</body>
+</html>
+
