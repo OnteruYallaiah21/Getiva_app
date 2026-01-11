@@ -1,15 +1,11 @@
 services:
   - type: web
     name: getiva-tracking-system
-    env: python
+    runtime: python
+    plan: free
     buildCommand: cd backend && pip install -r requirements.txt
     startCommand: cd backend && python main.py
     envVars:
       - key: PORT
         value: 8000
-    plan: free
-    disk:
-      name: data-disk
-      mountPath: /opt/render/project/src/backend/data
-      sizeGB: 1
 
