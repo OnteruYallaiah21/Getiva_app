@@ -29,7 +29,10 @@
                 <span id="backToAdminLink" style="display: none; margin-right: 15px;">
                     <a href="admin.html" onclick="returnToAdmin(); return false;" style="padding: 8px 16px; background: #6b7280; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">Back to Admin</a>
                 </span>
-                <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
+                <div style="background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%); padding: 12px 20px; border-radius: 10px; border: 2px solid #ff6600; box-shadow: 0 2px 8px rgba(255, 102, 0, 0.15);">
+                    <span style="color: #1f2937; font-size: 1.05em; font-weight: 500; margin-right: 8px;">Welcome,</span>
+                    <strong id="username-display" style="color: #ff6600; font-size: 1.2em; font-weight: 700; text-transform: capitalize; letter-spacing: 0.5px;"></strong>
+                </div>
                 <button onclick="logout()" class="secondary">Logout</button>
             </div>
         </div>
@@ -478,8 +481,8 @@
                         </div>
                         <div class="tile-footer">
                             <div class="tile-actions">
-                                <a href="${escapeHtml(app.view_link || app.download_link)}" target="_blank" class="tile-btn view-btn" title="View File">👁️</a>
-                                <a href="${escapeHtml(app.download_link)}" target="_blank" class="tile-btn download-btn" title="Download">⬇️</a>
+                                <a href="${API_BASE}/view-file?url=${encodeURIComponent(app.view_link || app.download_link)}" target="_blank" class="tile-btn view-btn" title="View File">👁️</a>
+                                <a href="${escapeHtml(app.download_link)}" target="_blank" download class="tile-btn download-btn" title="Download">⬇️</a>
                                 <button onclick="editApplication(${app.id}, '${escapeHtml(app.company.replace(/'/g, "\\'"))}', '${escapeHtml(app.jobdescription.replace(/'/g, "\\'"))}', '${escapeHtml(status.replace(/'/g, "\\'"))}')" class="tile-btn edit-btn" title="Edit">✏️</button>
                                 <button onclick="deleteApplication(${app.id})" class="tile-btn delete-btn" title="Delete">🗑️</button>
                             </div>

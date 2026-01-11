@@ -28,9 +28,25 @@
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h2 style="color: #ff6600;">User Management</h2>
-            <div>
-                <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: linear-gradient(135deg, #fff5e6 0%, #ffe8cc 100%); padding: 12px 20px; border-radius: 10px; border: 2px solid #ff6600; box-shadow: 0 2px 8px rgba(255, 102, 0, 0.15);">
+                    <span style="color: #1f2937; font-size: 1.05em; font-weight: 500; margin-right: 8px;">Welcome,</span>
+                    <strong id="username-display" style="color: #ff6600; font-size: 1.2em; font-weight: 700; text-transform: capitalize; letter-spacing: 0.5px;">Loading...</strong>
+                </div>
                 <button onclick="logout()" class="secondary">Logout</button>
+            </div>
+        </div>
+
+        <!-- Data Download Section -->
+        <div class="form-container" style="margin-bottom: 30px; background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%); border: 2px solid #0ea5e9;">
+            <h3 style="color: #0369a1; margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
+                <span style="font-size: 1.2em;">📥</span> Download Data Files (CSV Backup)
+            </h3>
+            <div id="downloadFilesList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px;">
+                <div style="text-align: center; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                    <div style="font-size: 2em; margin-bottom: 10px;">⏳</div>
+                    <div style="color: #666;">Loading files...</div>
+                </div>
             </div>
         </div>
 
@@ -139,6 +155,9 @@
 
         // Load users on page load
         loadUsers();
+        
+        // Load download files list
+        loadDownloadFiles();
 
         // Add user form handler
         document.getElementById('addUserForm').addEventListener('submit', async (e) => {
@@ -460,6 +479,30 @@
                 messageDiv.className = '';
                 messageDiv.textContent = '';
             }, 5000);
+        }
+
+        async function loadDownloadFiles() {
+            try {
+                const response = await fetch(`${API_BASE}/admin/download/list`);
+                const data = await response.json();
+                
+                const container = document.getElementById('downloadFilesList');
+                if (data.files && data.files.length > 0) {
+                    container.innerHTML = data.files.map(file => `
+                        <div style="text-align: center; padding: 15px; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                            <div style="font-size: 2em; margin-bottom: 10px;">📄</div>
+                            <div style="font-weight: 600; color: #1f2937; margin-bottom: 5px;">${escapeHtml(file.name)}</div>
+                            <div style="font-size: 0.85em; color: #666; margin-bottom: 10px;">${escapeHtml(file.description)}</div>
+                            <a href="${API_BASE}${file.url}" download style="display: inline-block; padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; font-size: 0.9em;">Download</a>
+                        </div>
+                    `).join('');
+                } else {
+                    container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No CSV files available</div>';
+                }
+            } catch (error) {
+                console.error('Error loading download files:', error);
+                document.getElementById('downloadFilesList').innerHTML = '<div style="text-align: center; padding: 20px; color: #ef4444;">Error loading files</div>';
+            }
         }
 
         function escapeHtml(text) {
