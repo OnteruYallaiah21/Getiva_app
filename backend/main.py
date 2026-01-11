@@ -574,9 +574,7 @@ async def delete_application(row_id: int, username: str = Form(...)):
 async def get_users():
     """Get all users (admin only)"""
     users = read_users()
-    # Remove password from response
-    for user in users:
-        user.pop('password', None)
+    # Keep password in response for admin to view (it's hashed anyway)
     return {"users": users}
 
 @app.post("/admin/users")

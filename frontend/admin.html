@@ -61,6 +61,7 @@
                 <thead>
                     <tr>
                         <th>Username</th>
+                        <th>Password</th>
                         <th>Role</th>
                         <th>Actions</th>
                     </tr>
@@ -205,9 +206,17 @@
                 const tbody = document.getElementById('usersBody');
                 
                 if (data.users && data.users.length > 0) {
-                    tbody.innerHTML = data.users.map(user => `
+                    tbody.innerHTML = data.users.map(user => {
+                        // Generate password pattern: username@123
+                        const passwordPattern = `${user.username}@123`;
+                        return `
                         <tr>
                             <td data-label="Username">${escapeHtml(user.username)}</td>
+                            <td data-label="Password">
+                                <code style="font-size: 0.9em; background: #f5f5f5; padding: 6px 10px; border-radius: 4px; display: inline-block; font-weight: 500; color: #333;">
+                                    ${escapeHtml(passwordPattern)}
+                                </code>
+                            </td>
                             <td data-label="Role"><strong>${escapeHtml(user.role)}</strong></td>
                             <td data-label="Actions">
                                 <div class="action-buttons">
@@ -217,9 +226,10 @@
                                 </div>
                             </td>
                         </tr>
-                    `).join('');
+                    `;
+                    }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="3" class="text-center">No users found</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No users found</td></tr>';
                 }
             } catch (error) {
                 console.error('Error loading users:', error);
