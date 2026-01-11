@@ -45,7 +45,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
 
@@ -53,6 +53,7 @@ app.add_middleware(
 BASE_DIR = Path(__file__).parent
 DATA_DIR = BASE_DIR / "data"
 USERS_CSV = DATA_DIR / "users.csv"
+LEADS_CSV = DATA_DIR / "leads.csv"
 UPLOADS_DIR = BASE_DIR.parent / "uploads"  # Local storage directory
 
 # Create directories if they don't exist
@@ -157,6 +158,47 @@ def write_users(users: list):
             writer = csv.DictWriter(f, fieldnames=['username', 'password', 'role'])
             writer.writeheader()
             writer.writerows(users)
+
+def init_leads_csv():
+    """Initialize leads.csv if it doesn't exist"""
+    if not LEADS_CSV.exists():
+        with open(LEADS_CSV, 'w', newline='') as f:
+            writer = csv.writer(f)
+            writer.writerow(['id', 'name', 'phone', 'email', 'status', 'comment', 'created_at', 'last_updated'])
+
+def read_leads() -> list:
+    """Read all leads from leads.csv"""
+    init_leads_csv()
+    leads = []
+    if LEADS_CSV.exists():
+        with open(LEADS_CSV, 'r', newline='') as f:
+            reader = csv.DictReader(f)
+            for lead in reader:
+                # Migrate old records: if timestamp exists but created_at/last_updated don't, use timestamp
+                if 'timestamp' in lead and lead.get('timestamp'):
+                    if 'created_at' not in lead or not lead.get('created_at'):
+                        lead['created_at'] = lead['timestamp']
+                    if 'last_updated' not in lead or not lead.get('last_updated'):
+                        lead['last_updated'] = lead['timestamp']
+                # Ensure both fields exist
+                if 'created_at' not in lead or not lead.get('created_at'):
+                    lead['created_at'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+                if 'last_updated' not in lead or not lead.get('last_updated'):
+                    lead['last_updated'] = lead.get('created_at', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+                # Ensure comment field exists (for old records)
+                if 'comment' not in lead:
+                    lead['comment'] = ''
+                leads.append(lead)
+    return leads
+
+def write_leads(leads: list):
+    """Write leads to leads.csv"""
+    init_leads_csv()
+    with open(LEADS_CSV, 'w', newline='') as f:
+        if leads:
+            writer = csv.DictWriter(f, fieldnames=['id', 'name', 'phone', 'email', 'status', 'comment', 'created_at', 'last_updated'])
+            writer.writeheader()
+            writer.writerows(leads)
 
 def read_applications(username: str) -> list:
     """Read applications for a user"""
@@ -667,6 +709,106 @@ async def get_user_applications(username: str):
     init_user_csv(username)
     applications = read_applications(username)
     return {"username": username, "applications": applications}
+
+# Leads Management Routes (Admin Only)
+@app.get("/admin/leads")
+async def get_leads():
+    """Get all leads (admin only)"""
+    leads = read_leads()
+    return {"leads": leads}
+
+@app.post("/admin/leads")
+async def create_lead(
+    name: str = Form(...),
+    phone: str = Form(...),
+    email: Optional[str] = Form(None),
+    status: str = Form("talk"),
+    comment: Optional[str] = Form(None)
+):
+    """Create new lead (admin only)"""
+    leads = read_leads()
+    
+    # Generate new ID
+    if leads:
+        max_id = max(int(lead.get('id', 0)) for lead in leads)
+        new_id = max_id + 1
+    else:
+        new_id = 1
+    
+    current_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    new_lead = {
+        'id': str(new_id),
+        'name': name,
+        'phone': phone,
+        'email': email or '',  # Allow empty email
+        'status': status,
+        'comment': comment or '',  # Allow empty comment
+        'created_at': current_time,
+        'last_updated': current_time
+    }
+    leads.append(new_lead)
+    write_leads(leads)
+    
+    return {"success": True, "lead": new_lead}
+
+@app.put("/admin/leads/{lead_id}")
+async def update_lead(
+    lead_id: str,
+    name: Optional[str] = Form(None),
+    phone: Optional[str] = Form(None),
+    email: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
+    comment: Optional[str] = Form(None)
+):
+    """Update lead (admin only)"""
+    leads = read_leads()
+    
+    # Find lead
+    lead_index = None
+    for i, lead in enumerate(leads):
+        if lead['id'] == lead_id:
+            lead_index = i
+            break
+    
+    if lead_index is None:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    
+    # Update fields (only update if provided)
+    if name:
+        leads[lead_index]['name'] = name
+    if phone:
+        leads[lead_index]['phone'] = phone
+    if email is not None:
+        leads[lead_index]['email'] = email
+    if status:
+        leads[lead_index]['status'] = status
+    if comment is not None:
+        leads[lead_index]['comment'] = comment
+    # Ensure comment field exists
+    if 'comment' not in leads[lead_index]:
+        leads[lead_index]['comment'] = ''
+    
+    # Update last_updated timestamp whenever any field is updated
+    leads[lead_index]['last_updated'] = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    
+    # Ensure created_at exists (for old records)
+    if 'created_at' not in leads[lead_index] or not leads[lead_index]['created_at']:
+        leads[lead_index]['created_at'] = leads[lead_index].get('last_updated', datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    
+    write_leads(leads)
+    
+    return {"success": True, "lead": leads[lead_index]}
+
+@app.delete("/admin/leads/{lead_id}")
+async def delete_lead(lead_id: str):
+    """Delete lead (admin only)"""
+    leads = read_leads()
+    
+    # Remove lead
+    leads = [lead for lead in leads if lead['id'] != lead_id]
+    write_leads(leads)
+    
+    return {"success": True}
 
 # Serve uploads directory for local files
 if UPLOADS_DIR.exists():

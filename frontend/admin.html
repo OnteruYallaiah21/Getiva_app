@@ -22,6 +22,7 @@
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
             <h2 style="color: #ff6600;">User Management</h2>
             <div>
+                <a href="leads.html" style="margin-right: 15px; padding: 8px 16px; background: #ff6600; color: white; text-decoration: none; border-radius: 5px; font-weight: 500;">Leads Management</a>
                 <span style="margin-right: 15px; color: #666;">Welcome, <strong id="username-display"></strong></span>
                 <button onclick="logout()" class="secondary">Logout</button>
             </div>
@@ -220,6 +221,7 @@
                             <td data-label="Role"><strong>${escapeHtml(user.role)}</strong></td>
                             <td data-label="Actions">
                                 <div class="action-buttons">
+                                    <button onclick="viewAsUser('${escapeHtml(user.username)}')" class="small" style="background: #10b981; color: white;">View as User</button>
                                     <button onclick="viewApplications('${escapeHtml(user.username)}')" class="small">View Applications</button>
                                     <button onclick="editUser('${escapeHtml(user.username)}', '${escapeHtml(user.role)}')" class="small">Edit</button>
                                     <button onclick="deleteUser('${escapeHtml(user.username)}')" class="small danger">Delete</button>
@@ -421,6 +423,22 @@
 
         function closeViewModal() {
             document.getElementById('viewApplicationsModal').classList.remove('active');
+        }
+
+        function viewAsUser(username) {
+            // Store admin credentials temporarily
+            const adminUsername = sessionStorage.getItem('username');
+            const adminRole = sessionStorage.getItem('role');
+            
+            // Set user credentials
+            sessionStorage.setItem('username', username);
+            sessionStorage.setItem('role', 'user');
+            sessionStorage.setItem('admin_username', adminUsername);
+            sessionStorage.setItem('admin_role', adminRole);
+            sessionStorage.setItem('viewing_as_user', 'true');
+            
+            // Redirect to user portal
+            window.location.href = 'user.html';
         }
 
         function logout() {

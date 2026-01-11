@@ -41,3 +41,4 @@ uploads/*
 .DS_Store
 Thumbs.db
 
+render-env.txt
