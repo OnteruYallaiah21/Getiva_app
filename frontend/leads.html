@@ -6,6 +6,18 @@
     <title>GetIVA - Leads Management</title>
     <link rel="stylesheet" href="style.css">
     <script src="config.js"></script>
+    <style>
+        body {
+            background: url('getiva_new.png') no-repeat center top;
+            background-size: cover;
+            background-attachment: scroll;
+        }
+        header {
+            background: url('getiva_new.png') no-repeat center top;
+            background-size: cover;
+            background-attachment: scroll;
+        }
+    </style>
 </head>
 <body>
     <header>
@@ -77,6 +89,17 @@
             </form>
         </div>
 
+        <!-- Search Bar -->
+        <div class="form-container" style="margin-bottom: 20px;">
+            <div class="form-group" style="margin-bottom: 0;">
+                <label for="searchLeadName" style="margin-bottom: 8px; color: #ff6600; font-weight: bold;">🔍 Search Leads by Name</label>
+                <input type="text" id="searchLeadName" placeholder="Type a name to search..." onkeyup="filterLeadsByName()" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
+            </div>
+            <div style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                <span id="leadsResultCount">Showing all leads</span>
+            </div>
+        </div>
+
         <!-- Leads Table -->
         <div id="leadsContainer">
             <table id="leadsTable">
@@ -95,7 +118,7 @@
                 </thead>
                 <tbody id="leadsBody">
                     <tr>
-                        <td colspan="7" class="text-center">Loading...</td>
+                        <td colspan="9" class="text-center">Loading leads...</td>
                     </tr>
                 </tbody>
             </table>
@@ -153,6 +176,7 @@
         // API_BASE is set by config.js
         let currentUsername = sessionStorage.getItem('username');
         let currentRole = sessionStorage.getItem('role');
+        let allLeads = []; // Store all leads for filtering
 
         // Check if user is logged in and is admin
         if (!currentUsername || currentRole !== 'admin') {
@@ -163,10 +187,119 @@
 
         // Load leads on page load
         loadLeads();
+        
+        // Filter leads by name
+        function filterLeadsByName() {
+            const searchTerm = document.getElementById('searchLeadName').value.toLowerCase().trim();
+            const tbody = document.getElementById('leadsBody');
+            const resultCount = document.getElementById('leadsResultCount');
+            
+            if (!allLeads || allLeads.length === 0) {
+                return;
+            }
+            
+            let filteredLeads = allLeads;
+            
+            if (searchTerm) {
+                filteredLeads = allLeads.filter(lead => {
+                    const name = (lead.name || '').toLowerCase();
+                    return name.includes(searchTerm);
+                });
+            }
+            
+            // Sort filtered leads by status
+            const statusOrder = {
+                'paid': 1,
+                'opportunity': 2,
+                'followup': 3,
+                'talk': 4
+            };
+            
+            filteredLeads.sort((a, b) => {
+                const statusA = statusOrder[a.status] || 99;
+                const statusB = statusOrder[b.status] || 99;
+                if (statusA !== statusB) {
+                    return statusA - statusB;
+                }
+                return (a.name || '').localeCompare(b.name || '');
+            });
+            
+            // Render filtered leads
+            if (filteredLeads.length > 0) {
+                const statusRowColors = {
+                    'opportunity': 'background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-left: 4px solid #8b5cf6;',
+                    'talk': 'background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #3b82f6;',
+                    'paid': 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981;',
+                    'followup': 'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;'
+                };
+                
+                const statusBadgeColors = {
+                    'opportunity': '#8b5cf6',
+                    'talk': '#3b82f6',
+                    'paid': '#10b981',
+                    'followup': '#f59e0b'
+                };
+                
+                tbody.innerHTML = filteredLeads.map(lead => {
+                    const status = lead.status || 'talk';
+                    const rowStyle = statusRowColors[status] || statusRowColors['talk'];
+                    const badgeColor = statusBadgeColors[status] || '#6b7280';
+                    
+                    return `
+                    <tr style="${rowStyle}">
+                        <td data-label="ID"><strong>${escapeHtml(lead.id)}</strong></td>
+                        <td data-label="Name"><strong>${escapeHtml(lead.name)}</strong></td>
+                        <td data-label="Phone"><a href="tel:${escapeHtml(lead.phone)}">${escapeHtml(lead.phone)}</a></td>
+                        <td data-label="Email">${lead.email ? `<a href="mailto:${escapeHtml(lead.email)}">${escapeHtml(lead.email)}</a>` : '<span style="color: #999;">N/A</span>'}</td>
+                        <td data-label="Status">
+                            <span style="background: ${badgeColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; text-transform: capitalize;">
+                                ${escapeHtml(lead.status)}
+                            </span>
+                        </td>
+                        <td data-label="Comment" style="min-width: 300px; max-width: 500px; word-wrap: break-word; white-space: pre-wrap; vertical-align: top; padding: 15px;">
+                            ${lead.comment ? (() => {
+                                const comment = lead.comment.toLowerCase();
+                                const isImportant = comment.includes('hari') || comment.includes('siva') || comment.includes('lahari') || comment.includes('follow up') || comment.includes('followup');
+                                if (isImportant) {
+                                    return `<div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); padding: 15px; border-radius: 8px; border-left: 4px solid #ff6600; font-weight: 500; color: #856404; box-shadow: 0 2px 4px rgba(255, 102, 0, 0.2); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; min-height: 60px;">${escapeHtml(lead.comment)}</div>`;
+                                }
+                                return `<div style="padding: 10px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; min-height: 50px;">${escapeHtml(lead.comment)}</div>`;
+                            })() : '<span style="color: #999;">N/A</span>'}
+                        </td>
+                        <td data-label="Created At">${escapeHtml(lead.created_at || lead.timestamp || 'N/A')}</td>
+                        <td data-label="Last Updated">${escapeHtml(lead.last_updated || lead.timestamp || 'N/A')}</td>
+                        <td data-label="Actions">
+                            <div class="action-buttons">
+                                <button onclick="editLead('${escapeHtml(lead.id)}', '${escapeHtml(lead.name)}', '${escapeHtml(lead.phone)}', '${escapeHtml(lead.email || '')}', '${escapeHtml(lead.status)}', '${escapeHtml((lead.comment || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'))}')" class="small">Edit</button>
+                                <button onclick="deleteLead('${escapeHtml(lead.id)}', '${escapeHtml(lead.name)}')" class="small danger">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                }).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center">No leads found matching your search</td></tr>';
+            }
+            
+            // Update result count
+            if (searchTerm) {
+                resultCount.textContent = `Showing ${filteredLeads.length} of ${allLeads.length} lead(s) matching "${searchTerm}"`;
+            } else {
+                resultCount.textContent = `Showing all ${allLeads.length} lead(s)`;
+            }
+        }
 
         // Add lead form handler
         document.getElementById('addLeadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state with spinner
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;"></span> Adding...';
+            showMessage('⏳ Adding lead...', 'info');
             
             const name = document.getElementById('newName').value.trim();
             const phone = document.getElementById('newPhone').value.trim();
@@ -176,7 +309,9 @@
             
             // Validate required fields
             if (!name || !phone) {
-                showMessage('Name and Phone are required fields', 'error');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+                showMessage('❌ Name and Phone are required fields', 'error');
                 return;
             }
             
@@ -193,14 +328,10 @@
             
             try {
                 const url = `${API_BASE}/admin/leads`;
-                console.log('Making POST request to:', url);
-                
                 const response = await fetch(url, {
                     method: 'POST',
                     body: formData
                 });
-                
-                console.log('Response status:', response.status, response.statusText);
                 
                 // Check if response is JSON
                 const contentType = response.headers.get('content-type');
@@ -210,28 +341,40 @@
                 } else {
                     const text = await response.text();
                     console.error('Non-JSON response:', text);
-                    showMessage(`Server error: ${response.status} ${response.statusText}`, 'error');
+                    showMessage(`❌ Server error: ${response.status} ${response.statusText}`, 'error');
                     return;
                 }
                 
                 if (response.ok) {
-                    showMessage('Lead added successfully!', 'success');
+                    showMessage('✅ Lead added successfully!', 'success');
                     document.getElementById('addLeadForm').reset();
-                    loadLeads();
+                    await loadLeads();
                 } else {
                     const errorMsg = data.detail || data.message || `Error adding lead (${response.status})`;
-                    showMessage(errorMsg, 'error');
+                    showMessage('❌ ' + errorMsg, 'error');
                     console.error('Error response:', data);
                 }
             } catch (error) {
                 console.error('Network error:', error);
-                showMessage(`Error connecting to server: ${error.message}. Please check if the backend is running.`, 'error');
+                showMessage(`❌ Error connecting to server: ${error.message}`, 'error');
+            } finally {
+                // Restore button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         });
 
         // Edit lead form handler
         document.getElementById('editLeadForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;"></span> Updating...';
+            showMessage('⏳ Updating lead...', 'info');
             
             const formData = new FormData();
             const leadId = document.getElementById('editLeadId').value;
@@ -248,14 +391,10 @@
             
             try {
                 const url = `${API_BASE}/admin/leads/${leadId}`;
-                console.log('Updating lead:', url);
-                
                 const response = await fetch(url, {
                     method: 'PUT',
                     body: formData
                 });
-                
-                console.log('Update response:', response.status, response.statusText);
                 
                 const contentType = response.headers.get('content-type');
                 let data;
@@ -264,31 +403,34 @@
                 } else {
                     const text = await response.text();
                     console.error('Non-JSON response:', text);
-                    showMessage(`Server error: ${response.status} ${response.statusText}`, 'error');
+                    showMessage(`❌ Server error: ${response.status} ${response.statusText}`, 'error');
                     return;
                 }
                 
                 if (response.ok) {
-                    showMessage('Lead updated successfully!', 'success');
+                    showMessage('✅ Lead updated successfully!', 'success');
                     closeEditModal();
-                    loadLeads();
+                    await loadLeads();
                 } else {
                     const errorMsg = data.detail || data.message || `Error updating lead (${response.status})`;
-                    showMessage(errorMsg, 'error');
+                    showMessage('❌ ' + errorMsg, 'error');
                     console.error('Error response:', data);
                 }
             } catch (error) {
                 console.error('Network error:', error);
-                showMessage(`Error connecting to server: ${error.message}`, 'error');
+                showMessage(`❌ Error connecting to server: ${error.message}`, 'error');
+            } finally {
+                // Restore button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         });
 
         async function loadLeads() {
+            const tbody = document.getElementById('leadsBody');
             try {
                 const url = `${API_BASE}/admin/leads`;
-                console.log('Loading leads from:', url);
                 const response = await fetch(url);
-                console.log('Load leads response:', response.status, response.statusText);
                 
                 if (!response.ok) {
                     throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -296,36 +438,70 @@
                 
                 const data = await response.json();
                 
-                const tbody = document.getElementById('leadsBody');
-                
                 if (data.leads && data.leads.length > 0) {
-                    tbody.innerHTML = data.leads.map(lead => {
-                        const statusColors = {
-                            'talk': '#3b82f6',
-                            'paid': '#10b981',
-                            'followup': '#f59e0b',
-                            'opportunity': '#8b5cf6'
-                        };
-                        const statusColor = statusColors[lead.status] || '#6b7280';
+                    // Store all leads for filtering
+                    allLeads = data.leads;
+                    
+                    // Sort leads by status (group together): paid, opportunity, followup, talk
+                    const statusOrder = {
+                        'paid': 1,
+                        'opportunity': 2,
+                        'followup': 3,
+                        'talk': 4
+                    };
+                    
+                    const sortedLeads = data.leads.sort((a, b) => {
+                        const statusA = statusOrder[a.status] || 99;
+                        const statusB = statusOrder[b.status] || 99;
+                        if (statusA !== statusB) {
+                            return statusA - statusB;
+                        }
+                        // If same status, sort by name
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
+                    
+                    // Update result count
+                    document.getElementById('leadsResultCount').textContent = `Showing all ${allLeads.length} lead(s)`;
+                    
+                    // Color coding by status: opportunity, talk, paid, followup
+                    const statusRowColors = {
+                        'opportunity': 'background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); border-left: 4px solid #8b5cf6;',
+                        'talk': 'background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%); border-left: 4px solid #3b82f6;',
+                        'paid': 'background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border-left: 4px solid #10b981;',
+                        'followup': 'background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-left: 4px solid #f59e0b;'
+                    };
+                    
+                    const statusBadgeColors = {
+                        'opportunity': '#8b5cf6',
+                        'talk': '#3b82f6',
+                        'paid': '#10b981',
+                        'followup': '#f59e0b'
+                    };
+                    
+                    tbody.innerHTML = sortedLeads.map(lead => {
+                        const status = lead.status || 'talk';
+                        const rowStyle = statusRowColors[status] || statusRowColors['talk'];
+                        const badgeColor = statusBadgeColors[status] || '#6b7280';
+                        
                         return `
-                        <tr>
-                            <td data-label="ID">${escapeHtml(lead.id)}</td>
-                            <td data-label="Name">${escapeHtml(lead.name)}</td>
+                        <tr style="${rowStyle}">
+                            <td data-label="ID"><strong>${escapeHtml(lead.id)}</strong></td>
+                            <td data-label="Name"><strong>${escapeHtml(lead.name)}</strong></td>
                             <td data-label="Phone"><a href="tel:${escapeHtml(lead.phone)}">${escapeHtml(lead.phone)}</a></td>
                             <td data-label="Email">${lead.email ? `<a href="mailto:${escapeHtml(lead.email)}">${escapeHtml(lead.email)}</a>` : '<span style="color: #999;">N/A</span>'}</td>
                             <td data-label="Status">
-                                <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 500; text-transform: capitalize;">
+                                <span style="background: ${badgeColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; text-transform: capitalize;">
                                     ${escapeHtml(lead.status)}
                                 </span>
                             </td>
-                            <td data-label="Comment" style="max-width: 200px; word-wrap: break-word;">
+                            <td data-label="Comment" style="min-width: 300px; max-width: 500px; word-wrap: break-word; white-space: pre-wrap; vertical-align: top; padding: 15px;">
                                 ${lead.comment ? (() => {
                                     const comment = lead.comment.toLowerCase();
                                     const isImportant = comment.includes('hari') || comment.includes('siva') || comment.includes('lahari') || comment.includes('follow up') || comment.includes('followup');
                                     if (isImportant) {
-                                        return `<div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); padding: 10px; border-radius: 8px; border-left: 4px solid #ff6600; font-weight: 500; color: #856404; box-shadow: 0 2px 4px rgba(255, 102, 0, 0.2);">${escapeHtml(lead.comment)}</div>`;
+                                        return `<div style="background: linear-gradient(135deg, #fff3cd 0%, #ffe69c 100%); padding: 15px; border-radius: 8px; border-left: 4px solid #ff6600; font-weight: 500; color: #856404; box-shadow: 0 2px 4px rgba(255, 102, 0, 0.2); line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; min-height: 60px;">${escapeHtml(lead.comment)}</div>`;
                                     }
-                                    return escapeHtml(lead.comment);
+                                    return `<div style="padding: 10px; line-height: 1.6; white-space: pre-wrap; word-wrap: break-word; min-height: 50px;">${escapeHtml(lead.comment)}</div>`;
                                 })() : '<span style="color: #999;">N/A</span>'}
                             </td>
                             <td data-label="Created At">${escapeHtml(lead.created_at || lead.timestamp || 'N/A')}</td>
@@ -340,7 +516,9 @@
                     `;
                     }).join('');
                 } else {
-                    tbody.innerHTML = '<tr><td colspan="8" class="text-center">No leads found</td></tr>';
+                    allLeads = [];
+                    tbody.innerHTML = '<tr><td colspan="9" class="text-center">No leads found</td></tr>';
+                    document.getElementById('leadsResultCount').textContent = 'No leads found';
                 }
             } catch (error) {
                 console.error('Error loading leads:', error);
@@ -369,6 +547,15 @@
                 return;
             }
             
+            // Find and disable the delete button
+            const deleteButtons = document.querySelectorAll(`button[onclick*="deleteLead('${leadId}'"]`);
+            deleteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<span style="display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 4px;"></span> Deleting...';
+            });
+            
+            showMessage('⏳ Deleting lead...', 'info');
+            
             try {
                 const response = await fetch(`${API_BASE}/admin/leads/${leadId}`, {
                     method: 'DELETE'
@@ -377,14 +564,22 @@
                 const data = await response.json();
                 
                 if (response.ok) {
-                    showMessage('Lead deleted successfully!', 'success');
-                    loadLeads();
+                    showMessage('✅ Lead deleted successfully!', 'success');
+                    await loadLeads();
                 } else {
-                    showMessage(data.detail || 'Error deleting lead', 'error');
+                    showMessage('❌ ' + (data.detail || 'Error deleting lead'), 'error');
+                    deleteButtons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Delete';
+                    });
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showMessage('Error connecting to server', 'error');
+                showMessage('❌ Error connecting to server', 'error');
+                deleteButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Delete';
+                });
             }
         }
 
@@ -396,11 +591,18 @@
         function showMessage(text, type) {
             const messageDiv = document.getElementById('message');
             messageDiv.className = `message ${type}`;
-            messageDiv.textContent = text;
+            messageDiv.innerHTML = text;
+            messageDiv.style.display = 'block';
+            
+            // Auto-hide after 5 seconds (except for info/loading messages which auto-hide after 3 seconds)
+            const hideDelay = type === 'info' ? 3000 : 5000;
             setTimeout(() => {
-                messageDiv.className = '';
-                messageDiv.textContent = '';
-            }, 5000);
+                if (messageDiv.className.includes(type)) {
+                    messageDiv.className = '';
+                    messageDiv.innerHTML = '';
+                    messageDiv.style.display = 'none';
+                }
+            }, hideDelay);
         }
 
         function escapeHtml(text) {

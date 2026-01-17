@@ -34,10 +34,10 @@ html {
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
-    background: url('indian_temnoal.png');
+    background: url('getiva_new.png');
     background-size: cover;
     background-position: center top;
-    background-attachment: fixed;
+    background-attachment: scroll;
     background-repeat: no-repeat;
     color: #1f2937;
     line-height: 1.6;
@@ -54,14 +54,13 @@ body {
     padding: 20px;
 }
 
-/* Modern Header Styles */
+/* Modern Header Styles with Glassmorphism */
 header {
-    background: url('indian_temnoal.png');
-    background-size: cover;
-    background-position: center top;
-    background-attachment: fixed;
-    background-repeat: no-repeat;
-    box-shadow: var(--shadow-xl);
+    background: rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.18);
     color: var(--dark);
     padding: 20px;
     margin-bottom: 20px;
@@ -137,16 +136,22 @@ header .logo-container > div {
     gap: 2px;
 }
 
-/* Forms */
+/* Forms with Enhanced Glassmorphism */
 .form-container {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     padding: 35px;
     border-radius: 20px;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     margin-bottom: 30px;
     border: 1px solid rgba(255, 255, 255, 0.3);
     transition: all 0.3s ease;
+}
+
+.form-container:hover {
+    background: rgba(255, 255, 255, 0.3);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.45);
 }
 
 
@@ -167,10 +172,14 @@ header .logo-container > div {
 .form-group select {
     width: 100%;
     padding: 12px;
-    border: 2px solid #ddd;
-    border-radius: 5px;
+    border: 2px solid rgba(255, 255, 255, 0.4);
+    border-radius: 8px;
     font-size: 1em;
-    transition: border-color 0.3s;
+    transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.15);
 }
 
 .form-group input:focus,
@@ -178,6 +187,11 @@ header .logo-container > div {
 .form-group select:focus {
     outline: none;
     border-color: #ff6600;
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    box-shadow: 0 0 0 3px rgba(255, 102, 0, 0.2), 0 4px 16px 0 rgba(31, 38, 135, 0.25);
+    transform: translateY(-1px);
 }
 
 .form-group textarea {
@@ -252,19 +266,25 @@ button.small {
     font-size: 0.85em;
 }
 
-/* Tables */
+/* Tables with Glassmorphism */
 table {
     width: 100%;
-    border-collapse: collapse;
-    background: white;
-    border-radius: 10px;
+    border-collapse: separate;
+    border-spacing: 0;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border-radius: 15px;
     overflow: hidden;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     margin-bottom: 30px;
 }
 
 th {
-    background-color: #ff6600;
+    background: rgba(255, 102, 0, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
     color: white;
     padding: 15px;
     text-align: left;
@@ -272,15 +292,21 @@ th {
     text-transform: uppercase;
     letter-spacing: 1px;
     font-size: 0.9em;
+    border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
 }
 
 td {
     padding: 15px;
-    border-bottom: 1px solid #e0e0e0;
+    background: rgba(255, 255, 255, 0.1);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
 }
 
-tr:hover {
-    background-color: #fff8f0;
+tr:hover td {
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
 }
 
 tr:last-child td {
@@ -308,18 +334,20 @@ a:hover {
 .login-container {
     max-width: 450px;
     margin: 80px auto;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
     padding: 50px 40px;
     border-radius: 25px;
-    box-shadow: var(--shadow-2xl);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     border: 1px solid rgba(255, 255, 255, 0.3);
     transition: all 0.3s ease;
 }
 
 .login-container:hover {
     transform: translateY(-5px);
-    box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
 }
 
 .login-container .logo {
@@ -379,7 +407,7 @@ a:hover {
     font-size: 0.85em;
 }
 
-/* Modal/Dialog styles */
+/* Modal/Dialog styles with Glassmorphism */
 .modal {
     display: none;
     position: fixed;
@@ -388,7 +416,9 @@ a:hover {
     top: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
     overflow: auto;
 }
 
@@ -397,12 +427,15 @@ a:hover {
 }
 
 .modal-content {
-    background-color: white;
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(25px) saturate(180%);
+    -webkit-backdrop-filter: blur(25px) saturate(180%);
     margin: 50px auto;
     padding: 30px;
-    border-radius: 10px;
+    border-radius: 20px;
     max-width: 600px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+    border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .modal-header {
@@ -458,17 +491,18 @@ a:hover {
     color: #ff6600;
 }
 
-/* Modern Dashboard Styles */
+/* Modern Dashboard Styles with Glassmorphism */
 .dashboard-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
     margin-bottom: 35px;
     padding: 25px 30px;
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-radius: 20px;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
 
@@ -502,11 +536,12 @@ a:hover {
 }
 
 .stat-card {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     padding: 30px 25px;
     border-radius: 20px;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     text-align: center;
     transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     border: 1px solid rgba(255, 255, 255, 0.3);
@@ -532,7 +567,8 @@ a:hover {
 
 .stat-card:hover {
     transform: translateY(-10px) scale(1.02);
-    box-shadow: var(--shadow-2xl);
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
 }
 
 .stat-card.stat-applied::before {
@@ -635,11 +671,12 @@ a:hover {
 }
 
 .search-filter-container {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     padding: 30px;
     border-radius: 20px;
-    box-shadow: var(--shadow-xl);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     margin-bottom: 30px;
     border: 1px solid rgba(255, 255, 255, 0.3);
 }
@@ -672,20 +709,24 @@ a:hover {
 .filter-box select {
     width: 100%;
     padding: 14px 18px;
-    border: 2px solid rgba(255, 255, 255, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.4);
     border-radius: 12px;
     font-size: 1em;
     transition: all 0.3s ease;
-    background: rgba(255, 255, 255, 0.8);
-    box-shadow: var(--shadow-sm);
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
 }
 
 .search-box input:focus,
 .filter-box select:focus {
     outline: none;
     border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.1);
-    background: white;
+    box-shadow: 0 0 0 3px rgba(255, 107, 53, 0.2), 0 4px 16px 0 rgba(31, 38, 135, 0.3);
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
     transform: translateY(-2px);
 }
 
@@ -911,10 +952,11 @@ a:hover {
 
 /* Square Tile Design */
 .application-tile {
-    background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.25);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
     border-radius: 16px;
-    box-shadow: var(--shadow-lg);
+    box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
     overflow: hidden;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     display: flex;
@@ -929,7 +971,8 @@ a:hover {
 
 .application-tile:hover {
     transform: translateY(-8px) scale(1.03);
-    box-shadow: var(--shadow-2xl);
+    background: rgba(255, 255, 255, 0.35);
+    box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
 }
 
 .tile-header {

@@ -6,6 +6,17 @@
     <title>GetIVA - Login</title>
     <link rel="stylesheet" href="style.css">
     <script src="config.js"></script>
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        body {
+            background: url('getiva_new.png') no-repeat center top;
+            background-size: cover;
+            background-attachment: scroll;
+        }
+    </style>
 </head>
 <body>
     <div class="login-container">
@@ -35,11 +46,17 @@
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #ffffff; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 8px;"></span> Logging in...';
+            showMessage('⏳ Logging in...', 'info');
+            
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const messageDiv = document.getElementById('message');
-            
-            messageDiv.innerHTML = '';
             
             try {
                 const formData = new FormData();
@@ -65,18 +82,25 @@
                         window.location.href = 'user.html';
                     }
                 } else {
-                    showMessage('Invalid username or password', 'error');
+                    showMessage('❌ Invalid username or password', 'error');
+                    // Restore button
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalText;
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                showMessage('Error connecting to server. Please check if the backend is running.', 'error');
+                showMessage('❌ Error connecting to server. Please check if the backend is running.', 'error');
+                // Restore button
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
             }
         });
         
         function showMessage(text, type) {
             const messageDiv = document.getElementById('message');
             messageDiv.className = `message ${type}`;
-            messageDiv.textContent = text;
+            messageDiv.innerHTML = text;
+            messageDiv.style.display = 'block';
         }
     </script>
 </body>
