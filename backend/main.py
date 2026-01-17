@@ -133,8 +133,9 @@ def get_db_connection():
     if not DATABASE_URL:
         raise Exception("DATABASE_URL not configured. Please set Aiven PostgreSQL connection string in .env file.")
     
-    # Verify we're connecting to Getiva_Tracking database
-    if "Getiva_Tracking" not in DATABASE_URL and "getiva_tracking" not in DATABASE_URL.lower():
+    # Verify we're connecting to Getiva_Tracking database (case-insensitive check)
+    db_name_lower = DATABASE_URL.lower()
+    if "getiva_tracking" not in db_name_lower:
         print("⚠️  WARNING: DATABASE_URL does not appear to point to Getiva_Tracking database")
     
     try:
@@ -142,8 +143,9 @@ def get_db_connection():
         conn = psycopg2.connect(DATABASE_URL)
         DB_AVAILABLE = True
         return conn
-    except ImportError:
-        raise Exception("psycopg2 not installed. Please install: pip install psycopg2-binary")
+    except ImportError as e:
+        # Provide helpful error message for psycopg2 installation issues
+        raise Exception(f"psycopg2 not installed or incompatible. Please install: pip install psycopg2-binary. Error: {e}")
     except Exception as e:
         raise Exception(f"Aiven PostgreSQL connection to Getiva_Tracking failed: {e}")
 
