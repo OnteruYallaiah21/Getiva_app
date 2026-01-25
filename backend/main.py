@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse, JSONResponse, HTMLResponse, Response
 from typing import Optional
 import csv
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import hashlib
 import json
@@ -713,7 +713,7 @@ def read_applications(username: str) -> list:
         try:
             cur = conn.cursor()
             cur.execute("""
-                SELECT id, company, jobdescription, filename, timestamp, download_link, view_link, status
+                SELECT id, company, job_description, filename, timestamp, resume_file_url, status, azure_blob_path
                 FROM applications WHERE username = %s ORDER BY timestamp DESC
             """, (username,))
             rows = cur.fetchall()
@@ -722,12 +722,15 @@ def read_applications(username: str) -> list:
                 applications.append({
                     'id': str(row[0]),
                     'company': row[1] or '',
-                    'jobdescription': row[2] or '',
+                    'job_description': row[2] or '',
+                    'jobdescription': row[2] or '',  # Keep for backward compatibility
                     'filename': row[3] or '',
                     'timestamp': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                    'download_link': row[5] or '',
-                    'view_link': row[6] or row[5] or '',
-                    'status': row[7] or 'applied'
+                    'resume_file_url': row[5] or '',
+                    'download_link': row[5] or '',  # Keep for backward compatibility
+                    'view_link': row[5] or '',  # Keep for backward compatibility
+                    'status': row[6] or 'applied',
+                    'azure_blob_path': row[7] or ''
                 })
             cur.close()
             conn.close()
@@ -1100,7 +1103,7 @@ async def get_applications(username: str, page: int = 1, limit: int = 10):
         
         # Get paginated results
         cur.execute("""
-            SELECT id, company, jobdescription, filename, timestamp, download_link, view_link, status
+            SELECT id, company, job_description, filename, timestamp, resume_file_url, status, azure_blob_path
             FROM applications 
             WHERE username = %s 
             ORDER BY timestamp DESC
@@ -1113,12 +1116,15 @@ async def get_applications(username: str, page: int = 1, limit: int = 10):
             applications.append({
                 'id': str(row[0]),
                 'company': row[1] or '',
-                'jobdescription': row[2] or '',
+                'job_description': row[2] or '',
+                'jobdescription': row[2] or '',  # Keep for backward compatibility
                 'filename': row[3] or '',
                 'timestamp': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-                'download_link': row[5] or '',
-                'view_link': row[6] or row[5] or '',
-                'status': row[7] or 'applied'
+                'resume_file_url': row[5] or '',
+                'download_link': row[5] or '',  # Keep for backward compatibility
+                'view_link': row[5] or '',  # Keep for backward compatibility
+                'status': row[6] or 'applied',
+                'azure_blob_path': row[7] or ''
             })
         
         cur.close()
@@ -1162,7 +1168,7 @@ async def get_applications(username: str, page: int = 1, limit: int = 10):
 async def create_application(
     username: str = Form(...),
     company: str = Form(...),
-    jobdescription: str = Form(...),
+    job_description: str = Form(...),
     file: UploadFile = File(...)
 ):
     """Create new application with file upload - saves directly to database with user relationship"""
@@ -1184,36 +1190,111 @@ async def create_application(
             conn.close()
             raise HTTPException(status_code=404, detail=f"User '{username}' not found. Please login first.")
         cur.close()
+        # Keep connection open for later use
     except HTTPException:
+        if conn:
+            conn.close()
         raise
     except Exception as e:
-        conn.close()
+        if conn:
+            conn.close()
         raise HTTPException(status_code=500, detail=f"Error verifying user: {str(e)}")
     
     # Read file content into memory
     file_content = await file.read()
     
-    # Create safe filename
-    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-    safe_filename = f"{username}_{timestamp_str}_{file.filename}"
-    
-    # Upload file to storage (with fallback chain)
+    # Upload file to Azure Blob Storage
     try:
-        upload_result = upload_file(file_content, safe_filename)
-        download_link = upload_result['download_link']
-        view_link = upload_result['view_link']
+        from azure.storage.blob import BlobServiceClient, ContentSettings
+        import os
+        
+        # Get Azure credentials
+        account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "")
+        account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY", "")
+        container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "getivastudentfiles")
+        
+        if not account_name or not account_key:
+            raise Exception("Azure Storage credentials not configured")
+        
+        # Remove 'ey1:' prefix if present
+        if account_key.startswith('ey1:'):
+            account_key = account_key[4:]
+        
+        # Create blob service client
+        connection_string = f"DefaultEndpointsProtocol=https;AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net"
+        blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+        container_client = blob_service_client.get_container_client(container_name)
+        
+        # Create container if it doesn't exist
+        try:
+            container_client.create_container()
+        except:
+            pass  # Container might already exist
+        
+        # Generate blob path
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        blob_name = f"{username}/resumes/{timestamp_str}_{file.filename}"
+        
+        # Determine content type
+        content_type = 'application/pdf'
+        if file.filename.lower().endswith('.docx'):
+            content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        elif file.filename.lower().endswith('.doc'):
+            content_type = 'application/msword'
+        
+        # Upload to Azure
+        container_client.upload_blob(
+            name=blob_name,
+            data=file_content,
+            overwrite=True,
+            content_settings=ContentSettings(content_type=content_type)
+        )
+        
+        # Generate SAS URL for download
+        from azure.storage.blob import generate_blob_sas, BlobSasPermissions
+        
+        sas_token = generate_blob_sas(
+            account_name=account_name,
+            container_name=container_name,
+            blob_name=blob_name,
+            account_key=account_key,
+            permission=BlobSasPermissions(read=True),
+            expiry=datetime.utcnow() + timedelta(days=365)  # 1 year expiry
+        )
+        
+        download_link = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{sas_token}"
+        blob_path = blob_name
+        
     except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=f"File upload failed: {str(e)}")
+        print(f"Azure upload failed: {e}, using local storage")
+        # Fallback to local storage
+        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_filename = f"{username}_{timestamp_str}_{file.filename}"
+        local_path = UPLOADS_DIR / safe_filename
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(local_path, 'wb') as f:
+            f.write(file_content)
+        download_link = f"/uploads/{safe_filename}"
+        blob_path = None
     
     # Insert directly into database - let database generate ID (SERIAL)
     try:
+        # Ensure connection is still open, reopen if needed
+        try:
+            # Test if connection is still valid
+            conn.cursor().close()
+        except:
+            # Connection is closed or invalid, reopen it
+            conn = get_db_connection()
+            if not conn:
+                raise HTTPException(status_code=500, detail="Database connection not available")
+        
         cur = conn.cursor()
         cur.execute("""
-            INSERT INTO applications (username, company, jobdescription, filename, timestamp, download_link, view_link, status)
+            INSERT INTO applications (username, company, job_description, filename, timestamp, resume_file_url, status, azure_blob_path)
             VALUES (%s, %s, %s, %s, CURRENT_TIMESTAMP, %s, %s, %s)
             RETURNING id, timestamp
-        """, (username, company, jobdescription, file.filename, download_link, view_link, 'Applied'))
+        """, (username, company, job_description, file.filename, download_link, 'applied', blob_path))
         
         row = cur.fetchone()
         app_id = row[0]
@@ -1228,25 +1309,32 @@ async def create_application(
             'id': str(app_id),
             'username': username,
             'company': company,
-            'jobdescription': jobdescription,
+            'job_description': job_description,
+            'jobdescription': job_description,  # Keep for backward compatibility
             'filename': file.filename,
             'timestamp': app_timestamp.strftime("%Y-%m-%d %H:%M:%S") if app_timestamp else datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            'download_link': download_link,
-            'view_link': view_link,
-            'status': 'Applied'
+            'resume_file_url': download_link,
+            'download_link': download_link,  # Keep for backward compatibility
+            'view_link': download_link,  # Keep for backward compatibility
+            'status': 'applied',
+            'azure_blob_path': blob_path or ''
         }
-        
-        # Also update CSV backup for compatibility
-        init_user_csv(username)
-        applications = read_applications(username)
-        applications.append(application)
-        write_applications_csv(username, applications)
         
         return {"success": True, "application": application}
     except Exception as e:
+        print(f"❌ Error saving application to database: {e}")
+        import traceback
+        traceback.print_exc()
         try:
-            conn.rollback()
-            conn.close()
+            if conn:
+                try:
+                    conn.rollback()
+                except:
+                    pass
+                try:
+                    conn.close()
+                except:
+                    pass
         except:
             pass
         raise HTTPException(status_code=500, detail=f"Error saving application to database: {str(e)}")
@@ -1256,58 +1344,164 @@ async def update_application(
     row_id: int,
     username: str = Form(...),
     company: Optional[str] = Form(None),
-    jobdescription: Optional[str] = Form(None),
+    job_description: Optional[str] = Form(None),
     status: Optional[str] = Form(None),
     file: Optional[UploadFile] = File(None)
 ):
     """Update existing application"""
-    applications = read_applications(username)
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection not available")
     
-    # Find application
-    app_index = None
-    for i, app in enumerate(applications):
-        if int(app.get('id', 0)) == row_id:
-            app_index = i
-            break
-    
-    if app_index is None:
-        raise HTTPException(status_code=404, detail="Application not found")
-    
-    application = applications[app_index]
-    
-    # Update fields - always set status if provided (even if empty string)
-    if company is not None:
-        application['company'] = company
-    if jobdescription is not None:
-        application['jobdescription'] = jobdescription
-    if status is not None:
-        application['status'] = status
-    
-    # Handle file replacement
-    if file:
-        if not file.filename.endswith(('.pdf', '.doc', '.docx')):
-            raise HTTPException(status_code=400, detail="Only PDF and DOC files are allowed")
+    try:
+        cur = conn.cursor()
+        # Get existing application
+        cur.execute("""
+            SELECT id, company, job_description, filename, timestamp, resume_file_url, status, azure_blob_path
+            FROM applications WHERE id = %s AND username = %s
+        """, (row_id, username))
+        row = cur.fetchone()
         
-        # Read file content into memory
-        file_content = await file.read()
+        if not row:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Application not found")
         
-        # Create safe filename for Supabase
-        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = f"{username}_{timestamp_str}_{file.filename}"
+        # Build update query dynamically
+        updates = []
+        values = []
         
-        # Upload directly to storage (with fallback chain)
-        upload_result = upload_file(file_content, safe_filename)
+        if company is not None:
+            updates.append("company = %s")
+            values.append(company)
+        if job_description is not None:
+            updates.append("job_description = %s")
+            values.append(job_description)
+        if status is not None:
+            updates.append("status = %s")
+            values.append(status.lower())  # Convert to lowercase for constraint
         
-        application['download_link'] = upload_result['download_link']
-        application['view_link'] = upload_result['view_link']
-        application['filename'] = file.filename
-    
-    # Update timestamp
-    application['timestamp'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    
-    write_applications(username, applications)
-    
-    return {"success": True, "application": application}
+        # Handle file replacement
+        if file:
+            if not file.filename.endswith(('.pdf', '.doc', '.docx')):
+                raise HTTPException(status_code=400, detail="Only PDF and DOC files are allowed")
+            
+            # Read file content
+            file_content = await file.read()
+            
+            # Upload to Azure Blob Storage
+            try:
+                from azure.storage.blob import BlobServiceClient, ContentSettings, generate_blob_sas, BlobSasPermissions
+                import os
+                
+                account_name = os.getenv("AZURE_STORAGE_ACCOUNT_NAME", "")
+                account_key = os.getenv("AZURE_STORAGE_ACCOUNT_KEY", "")
+                container_name = os.getenv("AZURE_STORAGE_CONTAINER_NAME", "getivastudentfiles")
+                
+                if account_name and account_key:
+                    if account_key.startswith('ey1:'):
+                        account_key = account_key[4:]
+                    
+                    connection_string = f"DefaultEndpointsProtocol=https;AccountName={account_name};AccountKey={account_key};EndpointSuffix=core.windows.net"
+                    blob_service_client = BlobServiceClient.from_connection_string(connection_string)
+                    container_client = blob_service_client.get_container_client(container_name)
+                    
+                    timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    blob_name = f"{username}/resumes/{timestamp_str}_{file.filename}"
+                    
+                    content_type = 'application/pdf'
+                    if file.filename.lower().endswith('.docx'):
+                        content_type = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+                    elif file.filename.lower().endswith('.doc'):
+                        content_type = 'application/msword'
+                    
+                    container_client.upload_blob(
+                        name=blob_name,
+                        data=file_content,
+                        overwrite=True,
+                        content_settings=ContentSettings(content_type=content_type)
+                    )
+                    
+                    sas_token = generate_blob_sas(
+                        account_name=account_name,
+                        container_name=container_name,
+                        blob_name=blob_name,
+                        account_key=account_key,
+                        permission=BlobSasPermissions(read=True),
+                        expiry=datetime.utcnow() + timedelta(days=365)
+                    )
+                    
+                    download_link = f"https://{account_name}.blob.core.windows.net/{container_name}/{blob_name}?{sas_token}"
+                    blob_path = blob_name
+                else:
+                    raise Exception("Azure credentials not configured")
+            except Exception as e:
+                print(f"Azure upload failed: {e}, using local storage")
+                timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
+                safe_filename = f"{username}_{timestamp_str}_{file.filename}"
+                local_path = UPLOADS_DIR / safe_filename
+                local_path.parent.mkdir(parents=True, exist_ok=True)
+                with open(local_path, 'wb') as f:
+                    f.write(file_content)
+                download_link = f"/uploads/{safe_filename}"
+                blob_path = None
+            
+            updates.append("resume_file_url = %s")
+            values.append(download_link)
+            updates.append("azure_blob_path = %s")
+            values.append(blob_path)
+            updates.append("filename = %s")
+            values.append(file.filename)
+        
+        # Always update updated_at timestamp
+        updates.append("updated_at = CURRENT_TIMESTAMP")
+        
+        # Add WHERE clause values
+        values.extend([row_id, username])
+        
+        # Execute update
+        update_query = f"""
+            UPDATE applications 
+            SET {', '.join(updates)}
+            WHERE id = %s AND username = %s
+        """
+        cur.execute(update_query, values)
+        conn.commit()
+        
+        # Fetch updated application
+        cur.execute("""
+            SELECT id, company, job_description, filename, timestamp, resume_file_url, status, azure_blob_path
+            FROM applications WHERE id = %s AND username = %s
+        """, (row_id, username))
+        row = cur.fetchone()
+        
+        application = {
+            'id': str(row[0]),
+            'company': row[1] or '',
+            'job_description': row[2] or '',
+            'jobdescription': row[2] or '',  # Backward compatibility
+            'filename': row[3] or '',
+            'timestamp': row[4].strftime('%Y-%m-%d %H:%M:%S') if row[4] else datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'resume_file_url': row[5] or '',
+            'download_link': row[5] or '',  # Backward compatibility
+            'view_link': row[5] or '',  # Backward compatibility
+            'status': row[6] or 'applied',
+            'azure_blob_path': row[7] or ''
+        }
+        
+        cur.close()
+        conn.close()
+        
+        return {"success": True, "application": application}
+    except HTTPException:
+        raise
+    except Exception as e:
+        try:
+            conn.rollback()
+            conn.close()
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Error updating application: {str(e)}")
 
 @app.delete("/applications/{row_id}")
 async def delete_application(row_id: int, username: str = Form(...)):

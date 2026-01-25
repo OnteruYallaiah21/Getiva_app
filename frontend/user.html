@@ -141,8 +141,8 @@
                     </div>
                     
                     <div class="form-group">
-                        <label for="jobdescription">Job Description *</label>
-                        <textarea id="jobdescription" name="jobdescription" required></textarea>
+                        <label for="job_description">Job Description *</label>
+                        <textarea id="job_description" name="job_description" required></textarea>
                     </div>
                     
                     <div class="form-group">
@@ -283,7 +283,7 @@
             const formData = new FormData();
             formData.append('username', currentUsername);
             formData.append('company', document.getElementById('company').value);
-            formData.append('jobdescription', document.getElementById('jobdescription').value);
+            formData.append('job_description', document.getElementById('job_description').value);
             formData.append('file', document.getElementById('file').files[0]);
             
             try {
@@ -292,7 +292,16 @@
                     body: formData
                 });
                 
-                const data = await response.json();
+                let data;
+                // Clone response to avoid "body stream already read" error
+                const responseClone = response.clone();
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    // If response is not JSON, get text from cloned response
+                    const text = await responseClone.text();
+                    throw new Error(text || 'Error adding application');
+                }
                 
                 if (response.ok) {
                     showMessage('✅ Application added successfully!', 'success');
@@ -300,15 +309,29 @@
                     closeAddModal();
                     loadApplications(1); // Reload from first page
                 } else {
-                    // Show error in modal
-                    const errorMsg = data.detail || 'Error adding application';
+                    // Extract error message properly
+                    let errorMsg = 'Error adding application';
+                    if (data) {
+                        if (typeof data === 'string') {
+                            errorMsg = data;
+                        } else if (data.detail) {
+                            errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+                        } else if (data.message) {
+                            errorMsg = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+                        } else if (data.error) {
+                            errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+                        } else {
+                            errorMsg = JSON.stringify(data);
+                        }
+                    }
                     closeAddModal(); // Close add modal first
                     showErrorModal(errorMsg);
                 }
             } catch (error) {
                 console.error('Error:', error);
                 closeAddModal(); // Close add modal first
-                showErrorModal('Error connecting to server. Please check your connection and try again.');
+                const errorMsg = error.message || error.toString() || 'Error connecting to server. Please check your connection and try again.';
+                showErrorModal(errorMsg);
             } finally {
                 // Restore button
                 submitBtn.disabled = false;
@@ -331,7 +354,7 @@
             const formData = new FormData();
             formData.append('username', currentUsername);
             formData.append('company', document.getElementById('editCompany').value);
-            formData.append('jobdescription', document.getElementById('editJobDescription').value);
+            formData.append('job_description', document.getElementById('editJobDescription').value);
             formData.append('status', document.getElementById('editStatus').value);
             
             const fileInput = document.getElementById('editFile');
@@ -347,18 +370,43 @@
                     body: formData
                 });
                 
-                const data = await response.json();
+                let data;
+                // Clone response to avoid "body stream already read" error
+                const responseClone = response.clone();
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const text = await responseClone.text();
+                    throw new Error(text || 'Error updating application');
+                }
                 
                 if (response.ok) {
                     showMessage('✅ Application updated successfully!', 'success');
+                    document.getElementById('editApplicationForm').reset();
                     closeEditModal();
                     loadApplications(currentPage); // Reload current page
                 } else {
-                    showMessage('❌ ' + (data.detail || 'Error updating application'), 'error');
+                    // Extract error message properly
+                    let errorMsg = 'Error updating application';
+                    if (data) {
+                        if (typeof data === 'string') {
+                            errorMsg = data;
+                        } else if (data.detail) {
+                            errorMsg = typeof data.detail === 'string' ? data.detail : JSON.stringify(data.detail);
+                        } else if (data.message) {
+                            errorMsg = typeof data.message === 'string' ? data.message : JSON.stringify(data.message);
+                        } else if (data.error) {
+                            errorMsg = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+                        } else {
+                            errorMsg = JSON.stringify(data);
+                        }
+                    }
+                    showMessage('❌ ' + errorMsg, 'error');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                showMessage('❌ Error connecting to server', 'error');
+                const errorMsg = error.message || error.toString() || 'Error connecting to server';
+                showMessage('❌ ' + errorMsg, 'error');
             } finally {
                 // Restore button
                 submitBtn.disabled = false;
@@ -480,22 +528,22 @@
             
             // Normalize status values for comparison (handle case variations)
             const applied = allApplications.filter(app => {
-                const status = (app.status || '').trim();
+                const status = normalizeStatus(app.status);
                 return !status || status === 'Applied' || status === '';
             }).length;
             
             const interview = allApplications.filter(app => {
-                const status = (app.status || '').trim();
+                const status = normalizeStatus(app.status);
                 return status === 'Interview';
             }).length;
             
             const offer = allApplications.filter(app => {
-                const status = (app.status || '').trim();
+                const status = normalizeStatus(app.status);
                 return status === 'Offer';
             }).length;
             
             const rejected = allApplications.filter(app => {
-                const status = (app.status || '').trim();
+                const status = normalizeStatus(app.status);
                 return status === 'Rejected';
             }).length;
 
@@ -551,11 +599,11 @@
             let filtered = allApplications.filter(app => {
                 // Search filter (job title or company)
                 const companyMatch = app.company ? app.company.toLowerCase().includes(searchTerm) : false;
-                const jobMatch = app.jobdescription ? app.jobdescription.toLowerCase().includes(searchTerm) : false;
+                const jobMatch = app.job_description || app.jobdescription ? (app.job_description || app.jobdescription).toLowerCase().includes(searchTerm) : false;
                 const matchesSearch = !searchTerm || companyMatch || jobMatch;
                 
-                // Status filter
-                const appStatus = app.status || 'Applied';
+                // Status filter - normalize status for comparison
+                const appStatus = normalizeStatus(app.status);
                 const matchesStatus = statusFilter === 'all' || appStatus === statusFilter;
                 
                 // Date filter
@@ -602,13 +650,14 @@
             const gridContainer = document.getElementById('applicationsGrid');
             if (filtered.length > 0) {
                 gridContainer.innerHTML = filtered.map(app => {
-                    const status = app.status || 'Applied';
+                    // Normalize status from backend (lowercase) to capitalized
+                    const status = normalizeStatus(app.status);
                     const statusClass = status.toLowerCase().replace(/\s+/g, '-');
                     const statusColors = {
-                        'applied': '#10b981',
-                        'interview': '#4a90e2',
-                        'offer': '#f59e0b',
-                        'rejected': '#ef4444'
+                        'applied': '#059669',
+                        'interview': '#2563eb',
+                        'offer': '#d97706',
+                        'rejected': '#dc2626'
                     };
                     const statusColor = statusColors[statusClass] || '#6b7280';
                     const date = new Date(app.timestamp);
@@ -617,23 +666,23 @@
                     return `
                     <div class="application-tile">
                         <div class="tile-header">
-                            <select class="tile-status-select" onchange="updateStatus(${app.id}, this.value)" style="background-color: ${statusColor};">
-                                <option value="Applied" ${status === 'Applied' ? 'selected' : ''}>Applied</option>
-                                <option value="Interview" ${status === 'Interview' ? 'selected' : ''}>Interview</option>
-                                <option value="Offer" ${status === 'Offer' ? 'selected' : ''}>Offer</option>
-                                <option value="Rejected" ${status === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                            <select class="tile-status-select" onchange="updateStatus(${app.id}, this.value)" style="background: linear-gradient(135deg, ${statusColor} 0%, ${statusColor}dd 100%); border: 2px solid ${statusColor}; box-shadow: 0 4px 12px ${statusColor}80;">
+                                <option value="Applied" ${status === 'Applied' ? 'selected' : ''} style="background: #059669;">Applied</option>
+                                <option value="Interview" ${status === 'Interview' ? 'selected' : ''} style="background: #2563eb;">Interview</option>
+                                <option value="Offer" ${status === 'Offer' ? 'selected' : ''} style="background: #d97706;">Offer</option>
+                                <option value="Rejected" ${status === 'Rejected' ? 'selected' : ''} style="background: #dc2626;">Rejected</option>
                             </select>
                         </div>
                         <div class="tile-body">
                             <h3 class="tile-company">${escapeHtml(app.company)}</h3>
-                            <p class="tile-job">${escapeHtml(app.jobdescription)}</p>
+                            <p class="tile-job">${escapeHtml(app.job_description || app.jobdescription || '')}</p>
                             <div class="tile-date">📅 ${escapeHtml(formattedDate)}</div>
                         </div>
                         <div class="tile-footer">
                             <div class="tile-actions">
-                                <a href="${API_BASE}/view-file?url=${encodeURIComponent(app.view_link || app.download_link)}" target="_blank" class="tile-btn view-btn" title="View File">👁️</a>
-                                <a href="${escapeHtml(app.download_link)}" target="_blank" download class="tile-btn download-btn" title="Download">⬇️</a>
-                                <button onclick="editApplication(${app.id}, '${escapeHtml(app.company.replace(/'/g, "\\'"))}', '${escapeHtml(app.jobdescription.replace(/'/g, "\\'"))}', '${escapeHtml(status.replace(/'/g, "\\'"))}')" class="tile-btn edit-btn" title="Edit">✏️</button>
+                                <a href="${API_BASE}/view-file?url=${encodeURIComponent(app.view_link || app.download_link || app.resume_file_url || '')}" target="_blank" class="tile-btn view-btn" title="View File">👁️</a>
+                                <a href="${API_BASE}/download-file?url=${encodeURIComponent(app.download_link || app.resume_file_url || '')}" download class="tile-btn download-btn" title="Download">⬇️</a>
+                                <button onclick="editApplication(${app.id}, '${escapeHtml(app.company.replace(/'/g, "\\'"))}', '${escapeHtml((app.job_description || app.jobdescription || '').replace(/'/g, "\\'"))}', '${escapeHtml(status.replace(/'/g, "\\'"))}')" class="tile-btn edit-btn" title="Edit">✏️</button>
                                 <button onclick="deleteApplication(${app.id})" class="tile-btn delete-btn" title="Delete">🗑️</button>
                             </div>
                         </div>
@@ -692,7 +741,7 @@
                 const formData = new FormData();
                 formData.append('username', currentUsername);
                 formData.append('company', app.company);
-                formData.append('jobdescription', app.jobdescription);
+                formData.append('job_description', app.job_description || app.jobdescription || '');
                 formData.append('status', newStatus);
 
                 const response = await fetch(`${API_BASE}/applications/${id}`, {
@@ -737,7 +786,7 @@
             document.getElementById('editId').value = id;
             document.getElementById('editCompany').value = company;
             document.getElementById('editJobDescription').value = jobDescription;
-            document.getElementById('editStatus').value = status || 'Applied';
+            document.getElementById('editStatus').value = normalizeStatus(status);
             document.getElementById('editFile').value = '';
             document.getElementById('editModal').classList.add('active');
         }
@@ -780,7 +829,15 @@
                     body: formData
                 });
                 
-                const data = await response.json();
+                let data;
+                // Clone response to avoid "body stream already read" error
+                const responseClone = response.clone();
+                try {
+                    data = await response.json();
+                } catch (jsonError) {
+                    const text = await responseClone.text();
+                    throw new Error(text || 'Error deleting application');
+                }
                 
                 if (response.ok) {
                     showMessage('✅ Application deleted successfully!', 'success');
@@ -841,6 +898,14 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        // Normalize status: capitalize first letter (backend returns lowercase)
+        function normalizeStatus(status) {
+            if (!status) return 'Applied';
+            const normalized = status.trim().toLowerCase();
+            // Capitalize first letter
+            return normalized.charAt(0).toUpperCase() + normalized.slice(1);
         }
 
     </script>
