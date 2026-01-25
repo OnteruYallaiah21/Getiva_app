@@ -43,4 +43,12 @@ uploads/*
 .DS_Store
 Thumbs.db
 
-render-env.txt
+# Test files with hardcoded credentials - DO NOT COMMIT
+tests/create_aiven_tables.py
+tests/migrate_csv_to_aiven.py
+tests/test_aiven_connection.py
+tests/test_getiva_tracking_db.py
+tests/view_database_data.py
+tests/reset_user_password.py
+tests/update_azure_credentials.py
+tests/setup_env.py
