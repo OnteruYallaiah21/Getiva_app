@@ -43,6 +43,9 @@ uploads/*
 .DS_Store
 Thumbs.db
 
+# Render hosting environment file (contains secrets)
+render-env.txt
+
 # Test files with hardcoded credentials - DO NOT COMMIT
 tests/create_aiven_tables.py
 tests/migrate_csv_to_aiven.py
