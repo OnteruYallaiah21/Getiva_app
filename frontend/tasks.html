@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GetIVA - Tasks Management</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="config.js"></script>
+    <style>
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+        body {
+            background-image: url('/team.png') !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-size: cover !important;
+            background-attachment: fixed !important;
+            background-color: transparent !important;
+            min-height: 100vh !important;
+            color: #ffffff !important;
+        }
+        header {
+            background: rgba(255, 255, 255, 0.15) !important;
+            background-image: none !important;
+            backdrop-filter: blur(15px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(15px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+        }
+        header h1, header .subtitle {
+            color: #ffffff !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.05) !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            background-image: none !important;
+        }
+        h2, h3 {
+            color: #ffffff !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
+        }
+        .form-container {
+            background: rgba(255, 255, 255, 0.25) !important;
+            backdrop-filter: blur(12px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
+        }
+        .form-group label {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7) !important;
+            background: rgba(0, 0, 0, 0.3) !important;
+            padding: 8px 12px !important;
+            border-radius: 8px !important;
+            display: inline-block !important;
+            margin-bottom: 8px !important;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            background: rgba(255, 255, 255, 0.95) !important;
+            color: #1f2937 !important;
+            border: 2px solid rgba(255, 255, 255, 0.5) !important;
+            border-radius: 8px !important;
+        }
+        button, .btn {
+            background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3) !important;
+            border: 2px solid rgba(255, 255, 255, 0.5) !important;
+            box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4) !important;
+        }
+        button:hover, .btn:hover {
+            background: linear-gradient(135deg, #ff8533 0%, #ff6600 100%) !important;
+            box-shadow: 0 6px 20px rgba(255, 102, 0, 0.6) !important;
+            transform: translateY(-2px) !important;
+        }
+        button.secondary {
+            background: rgba(107, 114, 128, 0.8) !important;
+            backdrop-filter: blur(10px) !important;
+        }
+        button.danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+        table {
+            background: rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 12px !important;
+        }
+        table th {
+            background: rgba(0, 0, 0, 0.3) !important;
+            color: #ffffff !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5) !important;
+        }
+        table td {
+            color: #ffffff !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3) !important;
+        }
+        table tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="logo-container">
+            <img src="getiva.jpeg" alt="GetIVA Logo" class="logo">
+            <div>
+                <h1>GETIVA</h1>
+                <p class="subtitle">Tasks Management</p>
+            </div>
+        </div>
+    </header>
+
+    <div class="container">
+        <!-- Navigation Links -->
+        <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+            <a href="admin.html" style="padding: 8px 16px; background: #6b7280; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Admin Portal</a>
+            <a href="leads.html" style="padding: 8px 16px; background: #ff6600; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Leads Management</a>
+            <a href="recruiters.html" style="padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Recruiters Management</a>
+            <a href="tasks.html" style="padding: 8px 16px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Tasks Management</a>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h2 style="color: #8b5cf6;">Tasks Management</h2>
+            <div style="display: flex; align-items: center; gap: 15px;">
+                <div style="background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%); padding: 12px 20px; border-radius: 10px; border: 2px solid #8b5cf6; box-shadow: 0 2px 8px rgba(139, 92, 246, 0.15);">
+                    <span style="color: #1f2937; font-size: 1.05em; font-weight: 500; margin-right: 8px;">Welcome,</span>
+                    <strong id="username-display" style="color: #8b5cf6; font-size: 1.2em; font-weight: 700; text-transform: capitalize; letter-spacing: 0.5px;">Loading...</strong>
+                </div>
+                <button onclick="logout()" class="secondary">Logout</button>
+            </div>
+        </div>
+
+        <div id="message"></div>
+
+        <!-- Add New Task Form -->
+        <div class="form-container">
+            <h3 style="color: #8b5cf6; margin-bottom: 20px;">Add New Task</h3>
+            <form id="addTaskForm">
+                <div class="form-group">
+                    <label for="newTaskTitle">Task Title *</label>
+                    <input type="text" id="newTaskTitle" name="task_title" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newTaskDescription">Task Description</label>
+                    <textarea id="newTaskDescription" name="task_description" rows="3" placeholder="Describe the task..."></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="newAssignedTo">Assigned To *</label>
+                        <input type="text" id="newAssignedTo" name="assigned_to_name" placeholder="Username or name" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newAssignedBy">Assigned By</label>
+                        <input type="text" id="newAssignedBy" name="assigned_by_name" placeholder="Admin name (optional)">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="newPriority">Priority *</label>
+                        <select id="newPriority" name="priority" required>
+                            <option value="low">Low</option>
+                            <option value="medium" selected>Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="newStatus">Status *</label>
+                        <select id="newStatus" name="status" required>
+                            <option value="todo" selected>Todo</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">Review</option>
+                            <option value="blocked">Blocked</option>
+                            <option value="done">Done</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="newDueDate">Due Date</label>
+                    <input type="date" id="newDueDate" name="due_date">
+                </div>
+                
+                <div class="form-group">
+                    <label for="newTaskFile">Attachment (optional)</label>
+                    <input type="file" id="newTaskFile" name="file" accept="*/*">
+                </div>
+                
+                <div class="form-group">
+                    <label for="newRemarks">Remarks</label>
+                    <textarea id="newRemarks" name="remarks" rows="3" placeholder="Additional notes or remarks..."></textarea>
+                </div>
+                
+                <button type="submit">Add Task</button>
+            </form>
+        </div>
+
+        <!-- Search and Filter Bar -->
+        <div class="form-container" style="margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="searchTaskTitle" style="margin-bottom: 8px; color: #8b5cf6; font-weight: bold;">🔍 Search Tasks</label>
+                    <input type="text" id="searchTaskTitle" placeholder="Search by title or assigned to..." onkeyup="filterTasks()" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="filterPriority" style="margin-bottom: 8px; color: #8b5cf6; font-weight: bold;">Priority</label>
+                    <select id="filterPriority" onchange="filterTasks()" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
+                        <option value="all">All Priorities</option>
+                        <option value="critical">Critical</option>
+                        <option value="high">High</option>
+                        <option value="medium">Medium</option>
+                        <option value="low">Low</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label for="filterStatus" style="margin-bottom: 8px; color: #8b5cf6; font-weight: bold;">Status</label>
+                    <select id="filterStatus" onchange="filterTasks()" style="width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 8px; font-size: 1em;">
+                        <option value="all">All Status</option>
+                        <option value="todo">Todo</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="review">Review</option>
+                        <option value="blocked">Blocked</option>
+                        <option value="done">Done</option>
+                    </select>
+                </div>
+            </div>
+            <div style="margin-top: 10px; color: #666; font-size: 0.9em;">
+                <span id="tasksResultCount">Showing all tasks</span>
+            </div>
+        </div>
+
+        <!-- Tasks Table -->
+        <div id="tasksContainer">
+            <table id="tasksTable">
+                <thead>
+                    <tr>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Assigned To</th>
+                        <th>Assigned By</th>
+                        <th>Priority</th>
+                        <th>Status</th>
+                        <th>Due Date</th>
+                        <th>Attachment</th>
+                        <th>Remarks</th>
+                        <th>Created</th>
+                        <th>Updated</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="tasksBody">
+                    <tr>
+                        <td colspan="12" class="text-center">Loading tasks...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Edit Task Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3>Edit Task</h3>
+                <span class="close" onclick="closeEditModal()">&times;</span>
+            </div>
+            <form id="editTaskForm">
+                <input type="hidden" id="editTaskId">
+                <div class="form-group">
+                    <label for="editTaskTitle">Task Title</label>
+                    <input type="text" id="editTaskTitle" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editTaskDescription">Task Description</label>
+                    <textarea id="editTaskDescription" rows="3"></textarea>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="editAssignedTo">Assigned To</label>
+                        <input type="text" id="editAssignedTo" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editAssignedBy">Assigned By</label>
+                        <input type="text" id="editAssignedBy">
+                    </div>
+                </div>
+                
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="editPriority">Priority</label>
+                        <select id="editPriority" required>
+                            <option value="low">Low</option>
+                            <option value="medium">Medium</option>
+                            <option value="high">High</option>
+                            <option value="critical">Critical</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="editStatus">Status</label>
+                        <select id="editStatus" required>
+                            <option value="todo">Todo</option>
+                            <option value="in_progress">In Progress</option>
+                            <option value="review">Review</option>
+                            <option value="blocked">Blocked</option>
+                            <option value="done">Done</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editDueDate">Due Date</label>
+                    <input type="date" id="editDueDate">
+                </div>
+                
+                <div class="form-group">
+                    <label for="editTaskFile">Replace Attachment (optional)</label>
+                    <input type="file" id="editTaskFile" accept="*/*">
+                    <div id="currentAttachment" style="margin-top: 8px; font-size: 0.9em; color: #666;"></div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="editRemarks">Remarks</label>
+                    <textarea id="editRemarks" rows="3"></textarea>
+                </div>
+                
+                <div style="display: flex; gap: 10px;">
+                    <button type="submit">Update</button>
+                    <button type="button" class="secondary" onclick="closeEditModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // API_BASE is set by config.js
+        let currentUsername = sessionStorage.getItem('username');
+        let currentRole = sessionStorage.getItem('role');
+        let allTasks = []; // Store all tasks for filtering
+
+        // Check if user is logged in and is admin
+        if (!currentUsername || currentRole !== 'admin') {
+            window.location.href = 'index.html';
+        }
+
+        document.getElementById('username-display').textContent = currentUsername;
+
+        // Load tasks on page load
+        loadTasks();
+        
+        // Filter tasks
+        function filterTasks() {
+            const searchTerm = document.getElementById('searchTaskTitle').value.toLowerCase().trim();
+            const priorityFilter = document.getElementById('filterPriority').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+            const tbody = document.getElementById('tasksBody');
+            const resultCount = document.getElementById('tasksResultCount');
+            
+            if (!allTasks || allTasks.length === 0) {
+                return;
+            }
+            
+            let filteredTasks = allTasks.filter(task => {
+                const titleMatch = (task.task_title || '').toLowerCase().includes(searchTerm);
+                const assignedToMatch = (task.assigned_to_name || '').toLowerCase().includes(searchTerm);
+                const matchesSearch = !searchTerm || titleMatch || assignedToMatch;
+                
+                const matchesPriority = priorityFilter === 'all' || task.priority === priorityFilter;
+                const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
+                
+                return matchesSearch && matchesPriority && matchesStatus;
+            });
+            
+            // Render filtered tasks
+            if (filteredTasks.length > 0) {
+                const priorityColors = {
+                    'critical': '#dc2626',
+                    'high': '#ea580c',
+                    'medium': '#f59e0b',
+                    'low': '#10b981'
+                };
+                
+                const statusColors = {
+                    'todo': '#6b7280',
+                    'in_progress': '#3b82f6',
+                    'review': '#8b5cf6',
+                    'blocked': '#ef4444',
+                    'done': '#10b981'
+                };
+                
+                tbody.innerHTML = filteredTasks.map(task => {
+                    const priorityColor = priorityColors[task.priority] || '#6b7280';
+                    const statusColor = statusColors[task.status] || '#6b7280';
+                    const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'done';
+                    
+                    return `
+                    <tr style="${isOverdue ? 'background: #fee2e2; border-left: 4px solid #dc2626;' : ''}">
+                        <td data-label="Title"><strong>${escapeHtml(task.task_title)}</strong></td>
+                        <td data-label="Description" style="max-width: 300px; word-wrap: break-word;">${escapeHtml(task.task_description || '')}</td>
+                        <td data-label="Assigned To"><strong>${escapeHtml(task.assigned_to_name)}</strong></td>
+                        <td data-label="Assigned By">${escapeHtml(task.assigned_by_name || 'N/A')}</td>
+                        <td data-label="Priority">
+                            <span style="background: ${priorityColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; text-transform: capitalize;">
+                                ${escapeHtml(task.priority)}
+                            </span>
+                        </td>
+                        <td data-label="Status">
+                            <span style="background: ${statusColor}; color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: 600; text-transform: capitalize;">
+                                ${escapeHtml(task.status.replace('_', ' '))}
+                            </span>
+                        </td>
+                        <td data-label="Due Date" style="${isOverdue ? 'color: #dc2626; font-weight: bold;' : ''}">
+                            ${task.due_date ? escapeHtml(new Date(task.due_date).toLocaleDateString()) : '<span style="color: #999;">N/A</span>'}
+                            ${isOverdue ? ' ⚠️' : ''}
+                        </td>
+                        <td data-label="Attachment">
+                            ${task.attachment_url ? `<a href="${API_BASE}/view-file?url=${encodeURIComponent(task.attachment_url)}" target="_blank" style="color: #3b82f6; text-decoration: none;">📎 ${escapeHtml(task.attachment_name || 'View')}</a>` : '<span style="color: #999;">N/A</span>'}
+                        </td>
+                        <td data-label="Remarks" style="max-width: 200px; word-wrap: break-word; white-space: pre-wrap;">${escapeHtml(task.remarks || '')}</td>
+                        <td data-label="Created">${escapeHtml(task.created_at || 'N/A')}</td>
+                        <td data-label="Updated">${escapeHtml(task.updated_at || 'N/A')}</td>
+                        <td data-label="Actions">
+                            <div class="action-buttons">
+                                <button onclick="editTask('${escapeHtml(task.id)}', '${escapeHtml(task.task_title.replace(/'/g, "\\'"))}', '${escapeHtml((task.task_description || '').replace(/'/g, "\\'"))}', '${escapeHtml(task.assigned_to_name.replace(/'/g, "\\'"))}', '${escapeHtml((task.assigned_by_name || '').replace(/'/g, "\\'"))}', '${escapeHtml(task.priority)}', '${escapeHtml(task.status)}', '${escapeHtml(task.due_date || '')}', '${escapeHtml(task.attachment_url || '')}', '${escapeHtml((task.attachment_name || '').replace(/'/g, "\\'"))}', '${escapeHtml((task.remarks || '').replace(/'/g, "\\'").replace(/"/g, '&quot;'))}')" class="small">Edit</button>
+                                <button onclick="deleteTask('${escapeHtml(task.id)}', '${escapeHtml(task.task_title.replace(/'/g, "\\'"))}')" class="small danger">Delete</button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                }).join('');
+            } else {
+                tbody.innerHTML = '<tr><td colspan="12" class="text-center">No tasks found matching your filters</td></tr>';
+            }
+            
+            // Update result count
+            if (searchTerm || priorityFilter !== 'all' || statusFilter !== 'all') {
+                resultCount.textContent = `Showing ${filteredTasks.length} of ${allTasks.length} task(s)`;
+            } else {
+                resultCount.textContent = `Showing all ${allTasks.length} task(s)`;
+            }
+        }
+
+        // Add task form handler
+        document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;"></span> Adding...';
+            showMessage('⏳ Adding task...', 'info');
+            
+            const formData = new FormData();
+            formData.append('task_title', document.getElementById('newTaskTitle').value.trim());
+            formData.append('task_description', document.getElementById('newTaskDescription').value.trim());
+            formData.append('assigned_to_name', document.getElementById('newAssignedTo').value.trim());
+            const assignedBy = document.getElementById('newAssignedBy').value.trim();
+            if (assignedBy) {
+                formData.append('assigned_by_name', assignedBy);
+            }
+            formData.append('priority', document.getElementById('newPriority').value);
+            formData.append('status', document.getElementById('newStatus').value);
+            const dueDate = document.getElementById('newDueDate').value;
+            if (dueDate) {
+                formData.append('due_date', dueDate);
+            }
+            const remarks = document.getElementById('newRemarks').value.trim();
+            if (remarks) {
+                formData.append('remarks', remarks);
+            }
+            const fileInput = document.getElementById('newTaskFile');
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/tasks`, {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const contentType = response.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    showMessage(`❌ Server error: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                if (response.ok) {
+                    showMessage('✅ Task added successfully!', 'success');
+                    document.getElementById('addTaskForm').reset();
+                    await loadTasks();
+                } else {
+                    const errorMsg = data.detail || data.message || `Error adding task (${response.status})`;
+                    showMessage('❌ ' + errorMsg, 'error');
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                showMessage(`❌ Error connecting to server: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+
+        // Edit task form handler
+        document.getElementById('editTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span style="display: inline-block; width: 16px; height: 16px; border: 3px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 8px;"></span> Updating...';
+            showMessage('⏳ Updating task...', 'info');
+            
+            const formData = new FormData();
+            const taskId = document.getElementById('editTaskId').value;
+            formData.append('task_title', document.getElementById('editTaskTitle').value.trim());
+            formData.append('task_description', document.getElementById('editTaskDescription').value.trim());
+            formData.append('assigned_to_name', document.getElementById('editAssignedTo').value.trim());
+            const assignedBy = document.getElementById('editAssignedBy').value.trim();
+            formData.append('assigned_by_name', assignedBy || '');
+            formData.append('priority', document.getElementById('editPriority').value);
+            formData.append('status', document.getElementById('editStatus').value);
+            const dueDate = document.getElementById('editDueDate').value;
+            formData.append('due_date', dueDate || '');
+            const remarks = document.getElementById('editRemarks').value.trim();
+            formData.append('remarks', remarks || '');
+            const fileInput = document.getElementById('editTaskFile');
+            if (fileInput.files.length > 0) {
+                formData.append('file', fileInput.files[0]);
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/tasks/${taskId}`, {
+                    method: 'PUT',
+                    body: formData
+                });
+                
+                const contentType = response.headers.get('content-type');
+                let data;
+                if (contentType && contentType.includes('application/json')) {
+                    data = await response.json();
+                } else {
+                    const text = await response.text();
+                    console.error('Non-JSON response:', text);
+                    showMessage(`❌ Server error: ${response.status} ${response.statusText}`, 'error');
+                    return;
+                }
+                
+                if (response.ok) {
+                    showMessage('✅ Task updated successfully!', 'success');
+                    closeEditModal();
+                    await loadTasks();
+                } else {
+                    const errorMsg = data.detail || data.message || `Error updating task (${response.status})`;
+                    showMessage('❌ ' + errorMsg, 'error');
+                }
+            } catch (error) {
+                console.error('Network error:', error);
+                showMessage(`❌ Error connecting to server: ${error.message}`, 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = originalText;
+            }
+        });
+
+        async function loadTasks() {
+            const tbody = document.getElementById('tasksBody');
+            try {
+                const response = await fetch(`${API_BASE}/admin/tasks`);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.tasks && data.tasks.length > 0) {
+                    allTasks = data.tasks;
+                    document.getElementById('tasksResultCount').textContent = `Showing all ${allTasks.length} task(s)`;
+                    filterTasks();
+                } else {
+                    allTasks = [];
+                    tbody.innerHTML = '<tr><td colspan="12" class="text-center">No tasks found</td></tr>';
+                    document.getElementById('tasksResultCount').textContent = 'No tasks found';
+                }
+            } catch (error) {
+                console.error('Error loading tasks:', error);
+                const errorMsg = error.message || 'Error loading tasks';
+                tbody.innerHTML = `<tr><td colspan="12" class="text-center" style="color: red;">${errorMsg}</td></tr>`;
+            }
+        }
+
+        function editTask(id, title, description, assignedTo, assignedBy, priority, status, dueDate, attachmentUrl, attachmentName, remarks) {
+            document.getElementById('editTaskId').value = id;
+            document.getElementById('editTaskTitle').value = title;
+            document.getElementById('editTaskDescription').value = description || '';
+            document.getElementById('editAssignedTo').value = assignedTo;
+            document.getElementById('editAssignedBy').value = assignedBy || '';
+            document.getElementById('editPriority').value = priority;
+            document.getElementById('editStatus').value = status;
+            document.getElementById('editDueDate').value = dueDate || '';
+            document.getElementById('editRemarks').value = remarks || '';
+            
+            const currentAttachmentDiv = document.getElementById('currentAttachment');
+            if (attachmentUrl && attachmentName) {
+                currentAttachmentDiv.innerHTML = `Current: <a href="${API_BASE}/view-file?url=${encodeURIComponent(attachmentUrl)}" target="_blank" style="color: #3b82f6;">${escapeHtml(attachmentName)}</a>`;
+            } else {
+                currentAttachmentDiv.innerHTML = 'No attachment';
+            }
+            
+            document.getElementById('editModal').classList.add('active');
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.remove('active');
+            document.getElementById('editTaskForm').reset();
+            document.getElementById('currentAttachment').innerHTML = '';
+        }
+
+        async function deleteTask(taskId, taskTitle) {
+            if (!confirm(`Are you sure you want to delete task "${taskTitle}"?`)) {
+                return;
+            }
+            
+            const deleteButtons = document.querySelectorAll(`button[onclick*="deleteTask('${taskId}'"]`);
+            deleteButtons.forEach(btn => {
+                btn.disabled = true;
+                btn.innerHTML = '<span style="display: inline-block; width: 12px; height: 12px; border: 2px solid rgba(255,255,255,.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite; margin-right: 4px;"></span> Deleting...';
+            });
+            
+            showMessage('⏳ Deleting task...', 'info');
+            
+            try {
+                const response = await fetch(`${API_BASE}/admin/tasks/${taskId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showMessage('✅ Task deleted successfully!', 'success');
+                    await loadTasks();
+                } else {
+                    showMessage('❌ ' + (data.detail || 'Error deleting task'), 'error');
+                    deleteButtons.forEach(btn => {
+                        btn.disabled = false;
+                        btn.innerHTML = 'Delete';
+                    });
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showMessage('❌ Error connecting to server', 'error');
+                deleteButtons.forEach(btn => {
+                    btn.disabled = false;
+                    btn.innerHTML = 'Delete';
+                });
+            }
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.className = `message ${type}`;
+            messageDiv.innerHTML = text;
+            messageDiv.style.display = 'block';
+            
+            const hideDelay = type === 'info' ? 3000 : 5000;
+            setTimeout(() => {
+                if (messageDiv.className.includes(type)) {
+                    messageDiv.className = '';
+                    messageDiv.innerHTML = '';
+                    messageDiv.style.display = 'none';
+                }
+            }, hideDelay);
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const editModal = document.getElementById('editModal');
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

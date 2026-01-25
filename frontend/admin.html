@@ -7,15 +7,106 @@
     <link rel="stylesheet" href="style.css">
     <script src="config.js"></script>
     <style>
+        html, body {
+            margin: 0 !important;
+            padding: 0 !important;
+        }
         body {
-            background: url('getiva_new.png') no-repeat center top;
-            background-size: cover;
-            background-attachment: scroll;
+            background-image: url('/team.png') !important;
+            background-repeat: no-repeat !important;
+            background-position: center center !important;
+            background-size: cover !important;
+            background-attachment: fixed !important;
+            background-color: transparent !important;
+            min-height: 100vh !important;
+            color: #ffffff !important;
         }
         header {
-            background: url('getiva_new.png') no-repeat center top;
-            background-size: cover;
-            background-attachment: scroll;
+            background: rgba(255, 255, 255, 0.15) !important;
+            background-image: none !important;
+            backdrop-filter: blur(15px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(15px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37) !important;
+        }
+        header h1, header .subtitle {
+            color: #ffffff !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.05) !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
+            background-image: none !important;
+        }
+        h2, h3 {
+            color: #ffffff !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5) !important;
+        }
+        .form-container {
+            background: rgba(255, 255, 255, 0.25) !important;
+            backdrop-filter: blur(12px) saturate(180%) !important;
+            -webkit-backdrop-filter: blur(12px) saturate(180%) !important;
+            border: 1px solid rgba(255, 255, 255, 0.4) !important;
+            border-radius: 16px !important;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2) !important;
+        }
+        .form-group label {
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7) !important;
+            background: rgba(0, 0, 0, 0.3) !important;
+            padding: 8px 12px !important;
+            border-radius: 8px !important;
+            display: inline-block !important;
+            margin-bottom: 8px !important;
+        }
+        .form-group input, .form-group select, .form-group textarea {
+            background: rgba(255, 255, 255, 0.95) !important;
+            color: #1f2937 !important;
+            border: 2px solid rgba(255, 255, 255, 0.5) !important;
+            border-radius: 8px !important;
+        }
+        button, .btn {
+            background: linear-gradient(135deg, #ff6600 0%, #ff8533 100%) !important;
+            color: #ffffff !important;
+            font-weight: 700 !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3) !important;
+            border: 2px solid rgba(255, 255, 255, 0.5) !important;
+            box-shadow: 0 4px 15px rgba(255, 102, 0, 0.4) !important;
+        }
+        button:hover, .btn:hover {
+            background: linear-gradient(135deg, #ff8533 0%, #ff6600 100%) !important;
+            box-shadow: 0 6px 20px rgba(255, 102, 0, 0.6) !important;
+            transform: translateY(-2px) !important;
+        }
+        button.secondary {
+            background: rgba(107, 114, 128, 0.8) !important;
+            backdrop-filter: blur(10px) !important;
+        }
+        button.secondary:hover {
+            background: rgba(75, 85, 99, 0.9) !important;
+        }
+        button.danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+        }
+        table {
+            background: rgba(255, 255, 255, 0.2) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            border-radius: 12px !important;
+        }
+        table th {
+            background: rgba(0, 0, 0, 0.3) !important;
+            color: #ffffff !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.5) !important;
+        }
+        table td {
+            color: #ffffff !important;
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3) !important;
+        }
+        table tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2) !important;
         }
     </style>
 </head>
@@ -36,6 +127,7 @@
             <a href="admin.html" style="padding: 8px 16px; background: #6b7280; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Admin Portal</a>
             <a href="leads.html" style="padding: 8px 16px; background: #ff6600; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Leads Management</a>
             <a href="recruiters.html" style="padding: 8px 16px; background: #10b981; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Recruiters Management</a>
+            <a href="tasks.html" style="padding: 8px 16px; background: #8b5cf6; color: white; text-decoration: none; border-radius: 5px; font-weight: 500; display: inline-block;">Tasks Management</a>
         </div>
 
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">

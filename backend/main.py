@@ -55,11 +55,11 @@ DATA_DIR = BASE_DIR / "data"
 USERS_CSV = DATA_DIR / "users.csv"
 LEADS_CSV = DATA_DIR / "leads.csv"
 RECRUITERS_CSV = DATA_DIR / "recruiters.csv"
-UPLOADS_DIR = BASE_DIR.parent / "uploads"  # Local storage directory
+# UPLOADS_DIR removed - using Azure Blob Storage only
 
 # Create directories if they don't exist
 DATA_DIR.mkdir(exist_ok=True)
-UPLOADS_DIR.mkdir(exist_ok=True)
+# UPLOADS_DIR removed - using Azure Blob Storage only
 
 # Supabase Configuration
 SUPABASE_URL = os.getenv("SUPABASE_URL", "")
@@ -211,6 +211,8 @@ def init_database_tables():
                 CONSTRAINT fk_username FOREIGN KEY (username) REFERENCES users(username) ON DELETE CASCADE
             )
         """)
+        
+        # Tasks table already exists in Neon DB - no need to create here
         
         # Create index for username (foreign key) if not exists
         cur.execute("""
@@ -928,84 +930,19 @@ def upload_to_cloudinary(file_content: bytes, filename: str) -> dict:
         print(f"Error uploading to Cloudinary: {e}")
         raise
 
-def get_next_local_filename() -> str:
-    """Get next sequential filename (db1, db2, db3, ...)"""
-    counter = 1
-    while True:
-        filename = f"db{counter}"
-        file_path = UPLOADS_DIR / filename
-        if not file_path.exists():
-            return filename
-        counter += 1
-        # Safety limit
-        if counter > 10000:
-            raise Exception("Too many local files")
+# Local storage functions removed - using Azure Blob Storage only
+# def get_next_local_filename() -> str:
+#     """DEPRECATED: Local storage no longer supported"""
+#     pass
 
-def upload_to_local(file_content: bytes, original_filename: str) -> dict:
-    """Upload file to local storage with sequential naming (db1, db2, db3, ...)"""
-    try:
-        # Get next sequential filename
-        local_filename = get_next_local_filename()
-        
-        # Preserve original extension
-        original_ext = Path(original_filename).suffix
-        local_filename_with_ext = f"{local_filename}{original_ext}"
-        
-        file_path = UPLOADS_DIR / local_filename_with_ext
-        
-        # Write file
-        with open(file_path, 'wb') as f:
-            f.write(file_content)
-        
-        # Return local URLs (relative paths for serving)
-        view_link = f"/uploads/{local_filename_with_ext}"
-        download_link = f"/uploads/{local_filename_with_ext}"
-        
-        return {
-            'view_link': view_link,
-            'download_link': download_link,
-            'file_id': local_filename_with_ext
-        }
-    except Exception as e:
-        print(f"Error uploading to local storage: {e}")
-        raise
+# def upload_to_local(file_content: bytes, original_filename: str) -> dict:
+#     """DEPRECATED: Local storage no longer supported"""
+#     pass
 
-def upload_file(file_content: bytes, filename: str) -> dict:
-    """
-    Upload file with fallback chain:
-    1. Try Google Drive
-    2. If fails, try Supabase
-    3. If fails, try Cloudinary
-    4. If all fail, save locally (db1, db2, db3, ...)
-    """
-    # Try Google Drive first
-    try:
-        print("Attempting upload to Google Drive...")
-        return upload_to_google_drive(file_content, filename)
-    except Exception as e:
-        print(f"Google Drive upload failed: {e}, trying Supabase...")
-    
-    # Try Supabase
-    try:
-        print("Attempting upload to Supabase...")
-        return upload_to_supabase(file_content, filename)
-    except Exception as e:
-        print(f"Supabase upload failed: {e}, trying Cloudinary...")
-    
-    # Try Cloudinary
-    try:
-        print("Attempting upload to Cloudinary...")
-        return upload_to_cloudinary(file_content, filename)
-    except Exception as e:
-        print(f"Cloudinary upload failed: {e}, using local storage...")
-    
-    # Fallback to local storage
-    try:
-        print("Using local storage (db1, db2, db3, ...)...")
-        return upload_to_local(file_content, filename)
-    except Exception as e:
-        print(f"Local storage failed: {e}")
-        raise HTTPException(status_code=500, detail=f"All upload methods failed. Last error: {str(e)}")
+# upload_file function removed - using Azure Blob Storage directly in create_application and update_application
+# def upload_file(file_content: bytes, filename: str) -> dict:
+#     """DEPRECATED: Local storage no longer supported - Azure Blob Storage only"""
+#     pass
 
 # Authentication dependency
 def get_current_user(username: str = Form(...), password: str = Form(...)):
@@ -1266,16 +1203,11 @@ async def create_application(
         blob_path = blob_name
         
     except Exception as e:
-        print(f"Azure upload failed: {e}, using local storage")
-        # Fallback to local storage
-        timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-        safe_filename = f"{username}_{timestamp_str}_{file.filename}"
-        local_path = UPLOADS_DIR / safe_filename
-        local_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(local_path, 'wb') as f:
-            f.write(file_content)
-        download_link = f"/uploads/{safe_filename}"
-        blob_path = None
+        print(f"❌ Azure upload failed: {e}")
+        import traceback
+        traceback.print_exc()
+        # Do not fallback to local storage - Azure is required
+        raise HTTPException(status_code=500, detail=f"Failed to upload file to Azure Blob Storage: {str(e)}. Please check Azure credentials.")
     
     # Insert directly into database - let database generate ID (SERIAL)
     try:
@@ -1436,15 +1368,11 @@ async def update_application(
                 else:
                     raise Exception("Azure credentials not configured")
             except Exception as e:
-                print(f"Azure upload failed: {e}, using local storage")
-                timestamp_str = datetime.now().strftime("%Y%m%d_%H%M%S")
-                safe_filename = f"{username}_{timestamp_str}_{file.filename}"
-                local_path = UPLOADS_DIR / safe_filename
-                local_path.parent.mkdir(parents=True, exist_ok=True)
-                with open(local_path, 'wb') as f:
-                    f.write(file_content)
-                download_link = f"/uploads/{safe_filename}"
-                blob_path = None
+                print(f"❌ Azure upload failed: {e}")
+                import traceback
+                traceback.print_exc()
+                # Do not fallback to local storage - Azure is required
+                raise HTTPException(status_code=500, detail=f"Failed to upload file to Azure Blob Storage: {str(e)}. Please check Azure credentials.")
             
             updates.append("resume_file_url = %s")
             values.append(download_link)
@@ -2000,6 +1928,408 @@ async def delete_recruiter(recruiter_id: str):
             pass
         raise HTTPException(status_code=500, detail=f"Error deleting recruiter: {str(e)}")
 
+# Tasks Management Routes (Admin Only)
+def read_tasks() -> list:
+    """Read all tasks from database"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    try:
+        cur = conn.cursor()
+        cur.execute("""
+            SELECT id, task_title, task_description, assigned_to_name, assigned_by_name,
+                   priority, status, due_date, attachment_url, attachment_name, remarks,
+                   created_at, updated_at
+            FROM tasks
+            ORDER BY 
+                CASE priority
+                    WHEN 'critical' THEN 1
+                    WHEN 'high' THEN 2
+                    WHEN 'medium' THEN 3
+                    WHEN 'low' THEN 4
+                END,
+                CASE status
+                    WHEN 'todo' THEN 1
+                    WHEN 'in_progress' THEN 2
+                    WHEN 'review' THEN 3
+                    WHEN 'blocked' THEN 4
+                    WHEN 'done' THEN 5
+                END,
+                due_date NULLS LAST,
+                created_at DESC
+        """)
+        rows = cur.fetchall()
+        tasks = []
+        for row in rows:
+            tasks.append({
+                'id': str(row[0]),
+                'task_title': row[1] or '',
+                'task_description': row[2] or '',
+                'assigned_to_name': row[3] or '',
+                'assigned_by_name': row[4] or '',
+                'priority': row[5] or 'medium',
+                'status': row[6] or 'todo',
+                'due_date': row[7].strftime('%Y-%m-%d') if row[7] else None,
+                'attachment_url': row[8] or '',
+                'attachment_name': row[9] or '',
+                'remarks': row[10] or '',
+                'created_at': row[11].strftime('%Y-%m-%d %H:%M:%S') if row[11] else '',
+                'updated_at': row[12].strftime('%Y-%m-%d %H:%M:%S') if row[12] else ''
+            })
+        cur.close()
+        conn.close()
+        return tasks
+    except Exception as e:
+        print(f"❌ Error reading tasks from database: {e}")
+        try:
+            conn.close()
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Error reading tasks: {str(e)}")
+
+@app.get("/admin/tasks")
+async def get_tasks():
+    """Get all tasks (admin only)"""
+    tasks = read_tasks()
+    return {"tasks": tasks}
+
+@app.post("/admin/tasks")
+async def create_task(
+    task_title: str = Form(...),
+    task_description: Optional[str] = Form(None),
+    assigned_to_name: str = Form(...),
+    assigned_by_name: Optional[str] = Form(None),
+    priority: str = Form("medium"),
+    status: str = Form("todo"),
+    due_date: Optional[str] = Form(None),
+    attachment_url: Optional[str] = Form(None),
+    attachment_name: Optional[str] = Form(None),
+    remarks: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None)
+):
+    """Create new task (admin only)"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    try:
+        # Validate priority
+        if priority not in ['low', 'medium', 'high', 'critical']:
+            raise HTTPException(status_code=400, detail="Invalid priority. Must be: low, medium, high, or critical")
+        
+        # Validate status
+        if status not in ['todo', 'in_progress', 'review', 'blocked', 'done']:
+            raise HTTPException(status_code=400, detail="Invalid status. Must be: todo, in_progress, review, blocked, or done")
+        
+        # Handle file upload if provided
+        final_attachment_url = attachment_url or ''
+        final_attachment_name = attachment_name or ''
+        
+        if file:
+            try:
+                # Upload to Azure Blob Storage
+                from azure.storage.blob import BlobServiceClient
+                import os
+                
+                AZURE_STORAGE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+                AZURE_CONTAINER_NAME = os.getenv('AZURE_CONTAINER_NAME', 'getiva-files')
+                
+                if not AZURE_STORAGE_CONNECTION_STRING:
+                    raise HTTPException(status_code=500, detail="Azure Blob Storage not configured")
+                
+                blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+                container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+                
+                # Generate unique filename
+                file_content = await file.read()
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                safe_filename = f"task_{timestamp}_{file.filename}"
+                
+                blob_client = container_client.upload_blob(
+                    name=safe_filename,
+                    data=file_content,
+                    overwrite=True
+                )
+                
+                # Get the blob URL
+                blob_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{AZURE_CONTAINER_NAME}/{safe_filename}"
+                final_attachment_url = blob_url
+                final_attachment_name = file.filename
+            except Exception as e:
+                print(f"Error uploading file: {e}")
+                raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+        
+        # Parse due_date if provided
+        due_date_parsed = None
+        if due_date:
+            try:
+                from datetime import datetime as dt
+                due_date_parsed = dt.strptime(due_date, '%Y-%m-%d').date()
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        
+        cur = conn.cursor()
+        cur.execute("""
+            INSERT INTO tasks (
+                task_title, task_description, assigned_to_name, assigned_by_name,
+                priority, status, due_date, attachment_url, attachment_name, remarks
+            ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+            RETURNING id, created_at, updated_at
+        """, (
+            task_title,
+            task_description or '',
+            assigned_to_name,
+            assigned_by_name or '',
+            priority,
+            status,
+            due_date_parsed,
+            final_attachment_url,
+            final_attachment_name,
+            remarks or ''
+        ))
+        
+        result = cur.fetchone()
+        task_id = str(result[0])
+        created_at = result[1].strftime('%Y-%m-%d %H:%M:%S') if result[1] else ''
+        updated_at = result[2].strftime('%Y-%m-%d %H:%M:%S') if result[2] else ''
+        
+        conn.commit()
+        cur.close()
+        conn.close()
+        
+        task = {
+            'id': task_id,
+            'task_title': task_title,
+            'task_description': task_description or '',
+            'assigned_to_name': assigned_to_name,
+            'assigned_by_name': assigned_by_name or '',
+            'priority': priority,
+            'status': status,
+            'due_date': due_date,
+            'attachment_url': final_attachment_url,
+            'attachment_name': final_attachment_name,
+            'remarks': remarks or '',
+            'created_at': created_at,
+            'updated_at': updated_at
+        }
+        
+        return {"success": True, "task": task}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error creating task: {e}")
+        try:
+            conn.rollback()
+            conn.close()
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Error creating task: {str(e)}")
+
+@app.put("/admin/tasks/{task_id}")
+async def update_task(
+    task_id: str,
+    task_title: Optional[str] = Form(None),
+    task_description: Optional[str] = Form(None),
+    assigned_to_name: Optional[str] = Form(None),
+    assigned_by_name: Optional[str] = Form(None),
+    priority: Optional[str] = Form(None),
+    status: Optional[str] = Form(None),
+    due_date: Optional[str] = Form(None),
+    attachment_url: Optional[str] = Form(None),
+    attachment_name: Optional[str] = Form(None),
+    remarks: Optional[str] = Form(None),
+    file: Optional[UploadFile] = File(None)
+):
+    """Update task (admin only)"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    try:
+        cur = conn.cursor()
+        
+        # Check if task exists
+        cur.execute("SELECT id FROM tasks WHERE id = %s", (task_id,))
+        if not cur.fetchone():
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Validate priority if provided
+        if priority and priority not in ['low', 'medium', 'high', 'critical']:
+            raise HTTPException(status_code=400, detail="Invalid priority. Must be: low, medium, high, or critical")
+        
+        # Validate status if provided
+        if status and status not in ['todo', 'in_progress', 'review', 'blocked', 'done']:
+            raise HTTPException(status_code=400, detail="Invalid status. Must be: todo, in_progress, review, blocked, or done")
+        
+        # Handle file upload if provided
+        final_attachment_url = attachment_url
+        final_attachment_name = attachment_name
+        
+        if file:
+            try:
+                # Upload to Azure Blob Storage
+                from azure.storage.blob import BlobServiceClient
+                import os
+                
+                AZURE_STORAGE_CONNECTION_STRING = os.getenv('AZURE_STORAGE_CONNECTION_STRING')
+                AZURE_CONTAINER_NAME = os.getenv('AZURE_CONTAINER_NAME', 'getiva-files')
+                
+                if not AZURE_STORAGE_CONNECTION_STRING:
+                    raise HTTPException(status_code=500, detail="Azure Blob Storage not configured")
+                
+                blob_service_client = BlobServiceClient.from_connection_string(AZURE_STORAGE_CONNECTION_STRING)
+                container_client = blob_service_client.get_container_client(AZURE_CONTAINER_NAME)
+                
+                # Generate unique filename
+                file_content = await file.read()
+                timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+                safe_filename = f"task_{timestamp}_{file.filename}"
+                
+                blob_client = container_client.upload_blob(
+                    name=safe_filename,
+                    data=file_content,
+                    overwrite=True
+                )
+                
+                # Get the blob URL
+                blob_url = f"https://{blob_service_client.account_name}.blob.core.windows.net/{AZURE_CONTAINER_NAME}/{safe_filename}"
+                final_attachment_url = blob_url
+                final_attachment_name = file.filename
+            except Exception as e:
+                print(f"Error uploading file: {e}")
+                raise HTTPException(status_code=500, detail=f"Error uploading file: {str(e)}")
+        
+        # Build UPDATE query dynamically
+        update_fields = []
+        update_values = []
+        
+        if task_title:
+            update_fields.append("task_title = %s")
+            update_values.append(task_title)
+        if task_description is not None:
+            update_fields.append("task_description = %s")
+            update_values.append(task_description)
+        if assigned_to_name:
+            update_fields.append("assigned_to_name = %s")
+            update_values.append(assigned_to_name)
+        if assigned_by_name is not None:
+            update_fields.append("assigned_by_name = %s")
+            update_values.append(assigned_by_name)
+        if priority:
+            update_fields.append("priority = %s")
+            update_values.append(priority)
+        if status:
+            update_fields.append("status = %s")
+            update_values.append(status)
+        if due_date is not None:
+            if due_date == '':
+                update_fields.append("due_date = NULL")
+            else:
+                try:
+                    from datetime import datetime as dt
+                    due_date_parsed = dt.strptime(due_date, '%Y-%m-%d').date()
+                    update_fields.append("due_date = %s")
+                    update_values.append(due_date_parsed)
+                except ValueError:
+                    raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
+        if final_attachment_url is not None:
+            update_fields.append("attachment_url = %s")
+            update_values.append(final_attachment_url)
+        if final_attachment_name is not None:
+            update_fields.append("attachment_name = %s")
+            update_values.append(final_attachment_name)
+        if remarks is not None:
+            update_fields.append("remarks = %s")
+            update_values.append(remarks)
+        
+        if update_fields:
+            update_fields.append("updated_at = NOW()")
+            update_values.append(task_id)
+            
+            update_query = f"UPDATE tasks SET {', '.join(update_fields)} WHERE id = %s"
+            cur.execute(update_query, update_values)
+            conn.commit()
+        
+        # Get updated task
+        cur.execute("""
+            SELECT id, task_title, task_description, assigned_to_name, assigned_by_name,
+                   priority, status, due_date, attachment_url, attachment_name, remarks,
+                   created_at, updated_at
+            FROM tasks WHERE id = %s
+        """, (task_id,))
+        row = cur.fetchone()
+        
+        task = {
+            'id': str(row[0]),
+            'task_title': row[1] or '',
+            'task_description': row[2] or '',
+            'assigned_to_name': row[3] or '',
+            'assigned_by_name': row[4] or '',
+            'priority': row[5] or 'medium',
+            'status': row[6] or 'todo',
+            'due_date': row[7].strftime('%Y-%m-%d') if row[7] else None,
+            'attachment_url': row[8] or '',
+            'attachment_name': row[9] or '',
+            'remarks': row[10] or '',
+            'created_at': row[11].strftime('%Y-%m-%d %H:%M:%S') if row[11] else '',
+            'updated_at': row[12].strftime('%Y-%m-%d %H:%M:%S') if row[12] else ''
+        }
+        
+        cur.close()
+        conn.close()
+        
+        return {"success": True, "task": task}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error updating task: {e}")
+        try:
+            conn.rollback()
+            conn.close()
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Error updating task: {str(e)}")
+
+@app.delete("/admin/tasks/{task_id}")
+async def delete_task(task_id: str):
+    """Delete task (admin only)"""
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection not available")
+    
+    try:
+        cur = conn.cursor()
+        
+        # Check if task exists
+        cur.execute("SELECT id, task_title FROM tasks WHERE id = %s", (task_id,))
+        task_row = cur.fetchone()
+        if not task_row:
+            cur.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Task not found")
+        
+        # Delete task
+        cur.execute("DELETE FROM tasks WHERE id = %s", (task_id,))
+        conn.commit()
+        
+        cur.close()
+        conn.close()
+        
+        return {"success": True, "message": f"Task '{task_row[1]}' deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"❌ Error deleting task: {e}")
+        try:
+            conn.rollback()
+            conn.close()
+        except:
+            pass
+        raise HTTPException(status_code=500, detail=f"Error deleting task: {str(e)}")
+
 # Manual Migration Endpoint (Admin Only)
 @app.post("/admin/migrate")
 async def manual_migrate():
@@ -2085,42 +2415,158 @@ async def get_download_list():
     
     return {"files": files}
 
-@app.get("/view-file")
-async def view_file(url: str):
+@app.get("/download-file")
+async def download_file(url: str):
     """
-    View file in browser instead of downloading.
-    Supports local files and proxies external URLs with proper headers.
+    Download file from Azure Blob Storage or external URLs.
+    No local storage support - only Azure Blob Storage and external URLs.
     """
     import urllib.parse
     from urllib.request import urlopen, Request
     
     try:
-        # Check if it's a local file
-        if url.startswith("/uploads/"):
-            # Local file - serve with inline content disposition
-            filename = url.replace("/uploads/", "")
-            file_path = UPLOADS_DIR / filename
-            if not file_path.exists():
-                raise HTTPException(status_code=404, detail="File not found")
-            
-            # Determine MIME type
-            mime_type = get_mime_type(filename)
-            
-            # Read file and serve with inline disposition
-            with open(file_path, 'rb') as file:
-                content = file.read()
-            
-            return Response(
-                content=content,
-                media_type=mime_type,
-                headers={
-                    "Content-Disposition": f'inline; filename="{filename}"',
-                    "Content-Type": mime_type
-                }
-            )
+        # Only support Azure Blob Storage URLs or external URLs
+        if url.startswith("http://") or url.startswith("https://"):
+            # For Azure Blob Storage URLs with SAS tokens, they work directly
+            # For other external URLs, fetch and serve
+            try:
+                # Fetch the file
+                req = Request(url)
+                req.add_header('User-Agent', 'Mozilla/5.0')
+                with urlopen(req, timeout=30) as response:
+                    content = response.read()
+                    content_type = response.headers.get('Content-Type', 'application/octet-stream')
+                    
+                    # Extract filename from URL if possible
+                    parsed_url = urllib.parse.urlparse(url)
+                    # Remove query parameters for filename extraction
+                    path = parsed_url.path
+                    filename = os.path.basename(path) or "file"
+                    
+                    # Try to decode filename if URL encoded
+                    try:
+                        filename = urllib.parse.unquote(filename)
+                    except:
+                        pass
+                
+                return Response(
+                    content=content,
+                    media_type=content_type,
+                    headers={
+                        "Content-Disposition": f'attachment; filename="{filename}"',
+                        "Content-Type": content_type
+                    }
+                )
+            except Exception as e:
+                # If proxy fails, return redirect to original URL
+                from fastapi.responses import RedirectResponse
+                print(f"Error downloading file from {url}: {e}")
+                return RedirectResponse(url=url)
         
-        # External URL - proxy with proper headers
-        elif url.startswith("http://") or url.startswith("https://"):
+        else:
+            raise HTTPException(status_code=400, detail="Invalid URL format. Only Azure Blob Storage URLs are supported. Local storage is not available.")
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error downloading file: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error downloading file: {str(e)}")
+
+@app.get("/view-file")
+async def view_file(url: str):
+    """
+    View file in browser from Azure Blob Storage or external URLs.
+    No local storage support - only Azure Blob Storage and external URLs.
+    DOCX files are displayed using Google Docs Viewer or Microsoft Office Online viewer.
+    """
+    import urllib.parse
+    from urllib.request import urlopen, Request
+    
+    try:
+        # Only support Azure Blob Storage URLs or external URLs
+        if url.startswith("http://") or url.startswith("https://"):
+            # Check file extension to determine file type
+            parsed_url = urllib.parse.urlparse(url)
+            filename = os.path.basename(parsed_url.path) or "file"
+            try:
+                filename = urllib.parse.unquote(filename)
+            except:
+                pass
+            
+            file_ext = os.path.splitext(filename)[1].lower()
+            
+            # Handle DOCX and DOC files with online viewers
+            if file_ext in ['.docx', '.doc']:
+                # Use Google Docs Viewer for DOCX files
+                encoded_url = urllib.parse.quote(url, safe='')
+                viewer_url = f"https://docs.google.com/viewer?url={encoded_url}&embedded=true"
+                
+                html_content = f"""
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <meta charset="UTF-8">
+                    <title>View Document - {filename}</title>
+                    <style>
+                        body {{ 
+                            margin: 0; 
+                            padding: 0; 
+                            overflow: hidden; 
+                            background: #f5f5f5;
+                        }}
+                        .viewer-container {{
+                            width: 100%;
+                            height: 100vh;
+                            display: flex;
+                            flex-direction: column;
+                        }}
+                        .viewer-header {{
+                            background: #fff;
+                            padding: 15px 20px;
+                            border-bottom: 1px solid #ddd;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                        }}
+                        .viewer-header h2 {{
+                            margin: 0;
+                            font-size: 18px;
+                            color: #333;
+                            font-family: Arial, sans-serif;
+                        }}
+                        iframe {{ 
+                            flex: 1;
+                            width: 100%; 
+                            border: none; 
+                            background: #fff;
+                        }}
+                        .fallback-link {{
+                            display: block;
+                            padding: 10px 20px;
+                            background: #4285f4;
+                            color: white;
+                            text-decoration: none;
+                            text-align: center;
+                            font-family: Arial, sans-serif;
+                        }}
+                        .fallback-link:hover {{
+                            background: #357ae8;
+                        }}
+                    </style>
+                </head>
+                <body>
+                    <div class="viewer-container">
+                        <div class="viewer-header">
+                            <h2>📄 {filename}</h2>
+                        </div>
+                        <iframe src="{viewer_url}" allow="fullscreen"></iframe>
+                        <a href="{url}" class="fallback-link" target="_blank">If the document doesn't load, click here to download</a>
+                    </div>
+                </body>
+                </html>
+                """
+                return HTMLResponse(content=html_content)
+            
             # Check if it's Google Drive view link - return redirect
             if "drive.google.com/file/d/" in url and "/view" in url:
                 # Google Drive view links work directly, but we can embed them
@@ -2143,7 +2589,7 @@ async def view_file(url: str):
                 """
                 return HTMLResponse(content=html_content)
             
-            # For other external URLs (Supabase, Cloudinary), fetch and proxy
+            # For PDF and other files (Azure Blob Storage and other external URLs), fetch and proxy
             try:
                 # Add inline parameter for Supabase if not present
                 if "supabase.co" in url and "response-content-disposition" not in url:
@@ -2153,13 +2599,13 @@ async def view_file(url: str):
                 # Fetch the file
                 req = Request(url)
                 req.add_header('User-Agent', 'Mozilla/5.0')
-                with urlopen(req, timeout=10) as response:
+                with urlopen(req, timeout=30) as response:
                     content = response.read()
                     content_type = response.headers.get('Content-Type', 'application/octet-stream')
                     
-                    # Extract filename from URL if possible
-                    parsed_url = urllib.parse.urlparse(url)
-                    filename = os.path.basename(parsed_url.path) or "file"
+                    # For PDF files, ensure inline display
+                    if file_ext == '.pdf' or content_type == 'application/pdf':
+                        content_type = 'application/pdf'
                     
                     return Response(
                         content=content,
@@ -2172,14 +2618,18 @@ async def view_file(url: str):
             except Exception as e:
                 # If proxy fails, return redirect to original URL
                 from fastapi.responses import RedirectResponse
+                print(f"Error viewing file from {url}: {e}")
                 return RedirectResponse(url=url)
         
         else:
-            raise HTTPException(status_code=400, detail="Invalid URL format")
+            raise HTTPException(status_code=400, detail="Invalid URL format. Only Azure Blob Storage URLs are supported. Local storage is not available.")
     
     except HTTPException:
         raise
     except Exception as e:
+        print(f"Error viewing file: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Error viewing file: {str(e)}")
 
 # Sent Emails Viewer with Comments
@@ -2920,9 +3370,9 @@ async def save_comment(data: dict):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error saving comment: {str(e)}")
 
-# Serve uploads directory for local files
-if UPLOADS_DIR.exists():
-    app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
+# Serve uploads directory for local files (DISABLED - using Azure Blob Storage only)
+# if UPLOADS_DIR.exists():
+#     app.mount("/uploads", StaticFiles(directory=str(UPLOADS_DIR)), name="uploads")
 
 # Serve frontend static files (must be last - catches all unmatched routes)
 FRONTEND_DIR = BASE_DIR.parent / "frontend"

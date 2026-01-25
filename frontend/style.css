@@ -763,9 +763,12 @@ a:hover {
 /* Applications Grid (Square Tiles) */
 .applications-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
     gap: 20px;
     margin-top: 20px;
+    align-items: start;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 @media screen and (min-width: 1200px) {
@@ -977,22 +980,34 @@ a:hover {
     flex-direction: column;
     border: 1px solid rgba(255, 255, 255, 0.3);
     position: relative;
-    aspect-ratio: 1;
-    min-height: 220px;
+    height: 320px !important;
+    min-height: 320px !important;
+    max-height: 320px !important;
+    width: 100%;
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
+    box-sizing: border-box;
+    margin: 0;
 }
 
 .application-tile:hover {
-    transform: translateY(-8px) scale(1.03);
+    transform: translateY(-4px) scale(1.02);
     background: rgba(255, 255, 255, 0.35);
     box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
+    z-index: 5;
 }
 
 .tile-header {
-    padding: 12px 15px;
+    padding: 10px 12px;
     background: rgba(249, 250, 251, 0.5);
     border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+    height: 48px !important;
+    min-height: 48px !important;
+    max-height: 48px !important;
+    display: flex;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 .tile-status-select {
@@ -1030,109 +1045,154 @@ a:hover {
 }
 
 .tile-body {
-    padding: 15px;
-    flex: 1;
+    padding: 12px 15px;
+    flex: 0 0 auto;
     display: flex;
     flex-direction: column;
-    justify-content: space-between;
+    justify-content: flex-start;
+    min-height: 0;
+    overflow: hidden;
+    height: 202px !important;
+    min-height: 202px !important;
+    max-height: 202px !important;
+    box-sizing: border-box;
 }
 
 .tile-company {
-    margin: 0 0 10px 0;
-    font-size: 1.1em;
+    margin: 0 0 6px 0;
+    font-size: 1em;
     font-weight: 800;
     background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    line-height: 1.3;
+    line-height: 1.2;
     word-wrap: break-word;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    height: 2.4em;
+    min-height: 2.4em;
+    max-height: 2.4em;
+    flex-shrink: 0;
 }
 
 .tile-job {
-    margin: 0 0 12px 0;
+    margin: 0 0 6px 0;
     color: #4b5563;
-    font-size: 0.85em;
-    line-height: 1.4;
+    font-size: 0.75em;
+    line-height: 1.25;
     word-wrap: break-word;
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
-    -webkit-line-clamp: 3;
+    -webkit-line-clamp: 5;
     -webkit-box-orient: vertical;
-    flex: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 6.25em;
+    max-height: 6.25em;
 }
 
 .tile-date {
     font-size: 0.75em;
     color: #6b7280;
     margin-top: auto;
-    padding-top: 10px;
+    padding-top: 6px;
     border-top: 1px solid rgba(229, 231, 235, 0.5);
+    flex-shrink: 0;
+    height: 1.5em;
+    min-height: 1.5em;
+    max-height: 1.5em;
 }
 
 .tile-footer {
-    padding: 12px 15px;
+    padding: 10px 8px;
     background: rgba(249, 250, 251, 0.5);
     border-top: 1px solid rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+    height: 70px !important;
+    min-height: 70px !important;
+    max-height: 70px !important;
+    display: flex;
+    align-items: center;
+    overflow: visible;
+    position: relative;
+    z-index: 10;
+    box-sizing: border-box;
 }
 
 .tile-actions {
     display: flex;
-    justify-content: space-around;
-    gap: 8px;
+    justify-content: space-between;
+    gap: 4px;
     align-items: center;
+    width: 100%;
+    flex-wrap: nowrap;
+    overflow: visible;
+    height: 100%;
 }
 
 .tile-btn {
-    flex: 1;
-    padding: 10px;
-    border: none;
-    border-radius: 12px;
-    font-size: 1.1em;
+    flex: 1 1 0;
+    padding: 8px 4px;
+    border: 2px solid rgba(0, 0, 0, 0.15);
+    border-radius: 8px;
+    font-size: 1.4em;
     cursor: pointer;
     transition: all 0.2s ease;
     text-decoration: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    min-height: 36px;
-    box-shadow: var(--shadow-sm);
-    background: rgba(255, 255, 255, 0.8);
-    color: #4b5563;
+    height: 50px !important;
+    min-height: 50px !important;
+    max-height: 50px !important;
+    min-width: 0;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    background: rgba(255, 255, 255, 0.95);
+    color: #1f2937;
+    font-weight: 700;
+    overflow: visible;
+    box-sizing: border-box;
+}
+
+.tile-btn:active {
+    transform: scale(0.95);
 }
 
 .tile-btn.view-btn:hover {
     background: linear-gradient(135deg, var(--secondary) 0%, #3b82f6 100%);
     color: white;
     transform: scale(1.1);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    border-color: var(--secondary);
 }
 
 .tile-btn.download-btn:hover {
     background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
     color: white;
     transform: scale(1.1);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.4);
+    border-color: var(--primary);
 }
 
 .tile-btn.edit-btn:hover {
     background: linear-gradient(135deg, var(--success) 0%, #059669 100%);
     color: white;
     transform: scale(1.1);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+    border-color: var(--success);
 }
 
 .tile-btn.delete-btn:hover {
     background: linear-gradient(135deg, var(--danger) 0%, #dc2626 100%);
     color: white;
     transform: scale(1.1);
-    box-shadow: var(--shadow-md);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    border-color: var(--danger);
 }
 
 @media (hover: none) and (pointer: coarse) {
